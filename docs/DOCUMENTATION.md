@@ -26,8 +26,9 @@ The demo includes six selectable team identities:
 | `u4` | Omar | AWS Engineer | `Omar` / `عمر` |
 | `u5` | Haneen | AWS Engineer | `Haneen` / `حنين` |
 | `u6` | Dina | AWS Engineer | `Dina` / `دينا` |
+| `root` | root | Protected root profile | `root` |
 
-These roles and profiles are demonstration data, not an authorization system. In the public demo, a known username plus any non-empty password selects the visible acting teammate; no password verification takes place.
+These roles and profiles are demonstration data, not an authorization system. The six standard demo identities still accept any non-empty password for compatibility until a password is changed; the protected demo `root` identity starts with `root@1234` and verifies the password using PBKDF2-HMAC-SHA-256. Password hashes changed from the profile screen are salted and stored in this browser's local storage. This is a demo-only simulation: users control the browser and can inspect/modify local data, so it is not a production authentication boundary. The AWS application continues to authenticate and change passwords through Cognito.
 
 ### Main capabilities
 
@@ -253,3 +254,12 @@ The separate AWS repository is the appropriate place to review the production-or
 **The site did not publish.** Check the latest GitHub Actions run, confirm Pages is configured to use GitHub Actions, and verify the build/deploy jobs succeeded.
 
 **The team needs shared, synchronized work data.** The current demo does not provide it. Review the separate AWS implementation and treat backend authentication, API authorization, data migration, monitoring, recovery, and cost controls as a dedicated deployment effort.
+
+
+## Account page updates (28 October 2026)
+
+The application opens on **My Account → Assigned Items** and the username control in the top bar opens **Profile**. Account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. Search in My Account filters the loaded Projects/Jobs; the Projects workspace retains its own Search tab, now collapsible/expandable with a floating button (expanded by default). The old “Assigned to me” sidebar mode is removed.
+
+Profile fields include the display name (not the login username), optional Arabic display-name text, phone number, e-mail, icon, label, optional Arabic label, and a read-only privilege. Display name and label Arabic variants are used when Arabic is selected. The icon selector lists icon names, includes modern outline icons such as `cowboy-hat`, and previews the selection before saving. **Save changes** saves profile fields only. Theme and language changes apply immediately and persist independently. The password form validates the current password and confirmation before requesting a password change.
+
+The local demo stores profile preferences, Arabic display-name/label variants, and pin IDs in its browser-local table simulation. Root is read-only in the app profile editor; its demo credential hash and changed demo password records are browser-local and must not be treated as secure server-side secrets.
