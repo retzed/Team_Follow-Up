@@ -28,7 +28,11 @@ The demo includes six selectable team identities:
 | `u6` | Dina | AWS Engineer | `Dina` / `دينا` |
 | `root` | root | Protected root profile | `root` |
 
-These roles and profiles are demonstration data, not an authorization system. The six standard demo identities still accept any non-empty password for compatibility until a password is changed; the protected demo `root` identity starts with `root@1234` and verifies the password using PBKDF2-HMAC-SHA-256. Password hashes changed from the profile screen are salted and stored in this browser's local storage. This is a demo-only simulation: users control the browser and can inspect/modify local data, so it is not a production authentication boundary. The AWS application continues to authenticate and change passwords through Cognito.
+These roles and profiles are demonstration data, not an authorization system. The entered sign-in username selects the identity but is not displayed in normal application UI; **Name** in Profile is the user-facing display name. The six standard demo identities accept any non-empty password for compatibility until a password is changed. The protected demo `root` identity starts with `root@1234` and verifies it using PBKDF2-HMAC-SHA-256 (210,000 iterations). Changed demo passwords are stored as salted PBKDF2-HMAC-SHA-256 hashes in this browser's local storage. This remains a demo-only simulation: users control the browser and can inspect/modify local data, so it is not production authentication. The AWS application continues to authenticate and change passwords through Cognito.
+
+### Account page
+
+The application opens on **My Account → Assigned Items**. Account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. Profile fields include display name, optional Arabic display name, phone, e-mail, icon, label, and optional Arabic label. The icon selector lists icon names and previews the current selection before saving. Theme and language changes apply immediately and persist independently of the Profile **Save changes** button. Password changes use the provider appropriate to the deployment: browser-local password simulation in this demo and Cognito in AWS. Pinned items are stored per user.
 
 ### Main capabilities
 
@@ -72,7 +76,7 @@ Child items use the priority scale `low`, `medium`, `high`, and `urgent`. The im
 
 ### Search and assignment views
 
-The sidebar offers a search view over Projects and Jobs and an **Assigned to me** view for items assigned to the acting demo identity. Filters support type, status, date ranges, and text queries. Child-item filters scope results to the selected Project or Job. For a Job, only its direct Follow-ups are eligible; Tasks remain Project-only.
+The workspace sidebar remains a **Search** view over Projects and Jobs. It is expanded by default and can be expanded or collapsed using its floating toggle. **Assigned Items** is available in the account page rather than as a second sidebar mode; the account page's Search tab also searches Projects and Jobs without leaving that page. Workspace filters support type, status, date ranges, and text queries. Child-item filters scope results to the selected Project or Job. For a Job, only its direct Follow-ups are eligible; Tasks remain Project-only.
 
 The interface includes clear/reset controls so a user can return to an unfiltered view. Counts reflect the active item scope rather than silently mixing different hierarchy levels.
 
@@ -228,7 +232,7 @@ The Pages artifact contains the static application, not the full source reposito
 
 This repository is a demonstration, **not a production application**.
 
-- Demo sign-in does not verify passwords or protect data.
+- The public demo is not a security boundary. PBKDF2 protects the representation of locally changed passwords from plain-text storage, but the code and root credential record are shipped to the browser and users can inspect or edit browser-local data.
 - The workspace and all client-side code are visible to the visitor.
 - Do not put real credentials, secrets, customer information, employee-sensitive notes, or confidential project data in the demo.
 - Keep production keys and real identity mappings out of HTML, sample datasets, configuration, source control, and CI logs.
@@ -241,7 +245,7 @@ The separate AWS repository is the appropriate place to review the production-or
 
 ## 10. Troubleshooting
 
-**The sign-in fails.** Use one of the six usernames, including the Arabic alias if desired, and enter a non-empty password.
+**The sign-in fails.** Use one of the six standard demo identities (English or Arabic alias), or use `root` with its initial `root@1234` password. If a standard demo user's password was changed in this browser, sign in with that saved password.
 
 **A different teammate sees the same items.** This is expected: the demo profiles share one workspace in the same browser profile.
 
