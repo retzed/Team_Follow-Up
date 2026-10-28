@@ -134,6 +134,16 @@ npm run build
 
 The build does not need cloud credentials, an AWS account, a database server, or third-party npm packages.
 
+## Account Search, navigation and responsive interaction contract
+
+The account hub and workspace share the same item model but intentionally have separate navigation/filter state. My Account opens on Assigned Items; the top-bar username opens Profile. Account Search operates on top-level Projects/Jobs and matches item metadata plus associated creator, updater, owner, and assignee identities. Its type/status filters, date sort mode, inclusive From/To date bounds, user selector, and Clear action are client-side controls over the loaded top-level dataset. It does not turn child items into separate results.
+
+Each Search result presents explicit Open in workspace, Activity history, and pin actions. Selecting a root switches the page state from account to workspace before rendering details. Selecting an assigned/pinned child resolves its root, waits for root hydration, expands its Task ancestor chain from the hydrated hierarchy, then scrolls the selected child into view. The sidebar collapse control must preserve the selected root and selected child; expansion restores the detail view after lazy loading.
+
+Activity remains on-demand instead of being fetched for every account result. Item-history buttons use the existing item/root activity cache and query boundary. In the demo, that cache and all records are browser-local; in the AWS repo, cached GET responses improve performance but the authenticated API and DynamoDB remain authoritative.
+
+For responsive layout, the account Search filter grid switches to two shrink-safe columns at widths up to 820 CSS pixels, with the query spanning the row. Input/select controls have bounded widths, result action buttons wrap, and the same structure must work in both English LTR and Arabic RTL. Inert result cards are not focusable; their explicit buttons provide keyboard access. These frontend changes add no data model, API, or persistence contract.
+
 ## Future evolution
 
 The preferred extension point is the data-access interface, not direct storage manipulation in view handlers. A future backend adapter should preserve the same public item/event model and the user-visible hierarchy/activity behavior while moving validation, authorization, concurrency control, auditing, and shared persistence to a trusted server. That transition requires security and integration tests against the server implementation; changing a browser configuration flag alone does not make the demo production-ready.
