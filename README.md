@@ -79,6 +79,8 @@ The interface uses revisioned in-memory indexes for item lookup, parent/child re
 
 The regression suite includes checks for modal click propagation, deep/cyclic hierarchy traversal, date sorting, Activity merge integrity, and UI structure. Run `npm test` and `npm run build` before publishing a frontend change.
 
+The **Projects & Jobs** workspace Search sidebar starts collapsed. Its floating toggle updates sidebar visibility directly, cancels the queued top-level search timer, and invalidates in-flight search results before hiding the panel. Reopening continues to use the existing cached list and root-child loading flow; viewport changes preserve the selected collapsed/expanded state. Regression tests cover the toggle state and stale-response protection.
+
 ## System requirements
 
 **For using the demo:** a current desktop or mobile browser with JavaScript enabled and browser storage available. No GPU, database server, cloud account, or special hardware is required. The demo is tested as a static browser application; persistent demo data requires the browser to allow site storage.
