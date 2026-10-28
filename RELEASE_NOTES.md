@@ -1,5 +1,16 @@
 # Application Release Notes
 
+## 28 October 2026 — Account Search, profile layout, navigation and mobile hardening
+
+- Added type, status, date sort, inclusive From/To date-range, user, and Clear controls to Account Search. Query matching includes Arabic names, descriptions, and creator/updater/owner/assignee identity information.
+- Added explicit **Open in workspace** and **Activity history** actions to Search results and history actions to Assigned/Pinned results. Opening items switches away from My Account; child navigation expands Task ancestors after lazy root hydration before scrolling the selected item into view.
+- Removed the privilege textbox from the profile form while preserving the privilege indicator beside the name. Renamed the Arabic label to **Label (Arabic)**, placed both labels together, and moved Profile icon to the final personal-detail field.
+- Hardened account Search matching for canonical AWS identity fields as well as demo aliases. Removed meaningless keyboard focus from result cards that are not actions.
+- Adjusted the Search filter grid for widths up to 820 CSS pixels, constrained date/select controls to their grid columns, and allowed result actions to wrap on mobile.
+- Added regression assertions for all of the above. Public CI checks JavaScript syntax, data API behavior, seed data, progressive loading, history, UI behavior, and the static demo build; it does not substitute for manual visual checks on every browser/device.
+
+This is a browser UI/data-selection change only. The public demo remains local-storage-only and uses demonstration sign-in; it does not become a shared database or a production authentication system.
+
 ## Current public demo
 
 - Bilingual English/Arabic workspace for projects, jobs, tasks, and follow-ups.
