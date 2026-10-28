@@ -10,7 +10,7 @@ The public site is for evaluation and presentation. Do not enter real personal, 
 
 ### Built-in demo users
 
-Use one of these usernames (English or Arabic alias). Enter any non-empty password.
+Use one of the six standard usernames (English or Arabic alias), or use `root` for the protected demo root identity. Standard users accept a non-empty password until they set one in the account page; `root` starts with password `root@1234`.
 
 | Team member | English username | Arabic username | User ID | Display label |
 |---|---|---|---|---|
@@ -20,8 +20,13 @@ Use one of these usernames (English or Arabic alias). Enter any non-empty passwo
 | Omar | `Omar` | `عمر` | `u4` | AWS Engineer |
 | Haneen | `Haneen` | `حنين` | `u5` | AWS Engineer |
 | Dina | `Dina` | `دينا` | `u6` | AWS Engineer |
+| Root | `root` | — | `root` | Protected system administrator |
 
-This is intentionally not real authentication: the app recognizes a built-in username and accepts any non-empty password. A demo login identifies the active teammate for UI/audit demonstrations; it does not create a protected account.
+This is intentionally not production authentication. The root demo password and any changed demo passwords are verified using salted PBKDF2-HMAC-SHA-256 records; the root record uses 210,000 iterations. Standard demo users retain the legacy non-empty-password behavior until they set a password. All records remain within browser-controlled storage, and the public client cannot enforce a trusted security boundary.
+
+### Account page and profile behavior
+
+The signed-in page opens on **Assigned Items**. The account hub contains **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. The profile display name is distinct from the sign-in username; users may optionally save Arabic display-name and label translations. The icon selector displays names and previews the chosen glyph before save. Theme and language take effect immediately and are saved independently of Profile **Save changes**. The Projects workspace retains its own Search sidebar, expanded by default and controlled by a floating expand/collapse button.
 
 ### Demo data lifetime
 
