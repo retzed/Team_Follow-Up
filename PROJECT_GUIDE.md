@@ -26,7 +26,13 @@ This is intentionally not production authentication. The root demo password and 
 
 ### Account page and profile behavior
 
-The signed-in page opens on **Assigned Items**. The account hub contains **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. The profile display name is distinct from the sign-in username; users may optionally save Arabic display-name and label translations. The icon selector displays names and previews the chosen glyph before save. Theme and language take effect immediately and are saved independently of Profile **Save changes**. The Projects workspace retains its own Search sidebar, expanded by default and controlled by a floating expand/collapse button.
+The signed-in page opens on **My Account → Assigned Items**. The top-bar username opens **Profile**. The account hub contains **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. The displayed name is a profile display name, not a login username.
+
+The personal profile fields are displayed in this order: **Display name**, optional **Display name (Arabic)**, **Phone number**, **E-mail**, **Label**, **Label (Arabic)**, and **Profile icon**. The two labels are adjacent, the Arabic label does not include the “optional” suffix in its text, and Profile icon is the last personal-detail field. Privilege is not an editable textbox in Profile; its indicator remains beside the name at the top. Authorized privilege management is separate, and root remains read-only in the profile editor. Theme and language take effect immediately and are saved independently of Profile **Save changes**.
+
+Account **Search** filters top-level Projects/Jobs by text, type, status, associated user, sort date and inclusive **From / To** date bounds. **Clear** resets all filters. Each result has separate **Open in workspace**, **Activity history**, and pin actions; clicking the card itself is not the open action. Assigned Items and Pinned Items also expose workspace and activity-history actions.
+
+When opening an assigned or pinned child item, the UI switches to the workspace, hydrates the root Project/Job, expands Task ancestors after the child hierarchy loads, and scrolls the selected item into view. Expanding the workspace Search sidebar should retain the same selection. At widths up to 820 CSS pixels, Account Search uses two shrink-safe columns; query fills the row, date controls must not overflow, and action buttons may wrap. Verify in both English LTR and Arabic RTL.
 
 ### Demo data lifetime
 
