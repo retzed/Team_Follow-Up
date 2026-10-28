@@ -260,10 +260,36 @@ The separate AWS repository is the appropriate place to review the production-or
 **The team needs shared, synchronized work data.** The current demo does not provide it. Review the separate AWS implementation and treat backend authentication, API authorization, data migration, monitoring, recovery, and cost controls as a dedicated deployment effort.
 
 
-## Account page updates (28 October 2026)
+## Account page, Search, navigation and mobile reliability (28 October 2026)
 
-The application opens on **My Account → Assigned Items** and the username control in the top bar opens **Profile**. Account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. Search in My Account filters the loaded Projects/Jobs; the Projects workspace retains its own Search tab, now collapsible/expandable with a floating button (expanded by default). The old “Assigned to me” sidebar mode is removed.
+The default landing view is **My Account → Assigned Items**. The username control in the top bar opens **Profile**. The account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. The Projects & Jobs workspace retains its own Search panel; that panel is expanded by default and has a floating expand/collapse button. The former “Assigned to me” sidebar mode is not part of the current navigation model.
 
-Profile fields include the display name (not the login username), optional Arabic display-name text, phone number, e-mail, icon, label, optional Arabic label, and a read-only privilege. Display name and label Arabic variants are used when Arabic is selected. The icon selector lists icon names, includes modern outline icons such as `cowboy-hat`, and previews the selection before saving. **Save changes** saves profile fields only. Theme and language changes apply immediately and persist independently. The password form validates the current password and confirmation before requesting a password change.
+### Profile fields and preferences
 
-The local demo stores profile preferences, Arabic display-name/label variants, and pin IDs in its browser-local table simulation. Root is read-only in the app profile editor; its demo credential hash and changed demo password records are browser-local and must not be treated as secure server-side secrets.
+The displayed name is a display name, not a login username. The profile editor contains **Display name**, optional **Display name (Arabic)**, **Phone number**, **E-mail**, **Label**, optional **Label (Arabic)**, and **Profile icon** in that order. The Arabic Label text is exactly `Label (Arabic)`; the two label fields are adjacent and Profile icon is the final personal-detail field. The icon selector lists supported icon names and previews the selected icon. The privilege value is not an editable profile field: the privilege indicator remains beside the display name at the top of the page, while authorized team-privilege management remains a separate function. The root profile remains read-only through the profile editor.
+
+**Save changes** persists profile fields. Theme and language are changed and persisted independently. Arabic display-name and label variants are used when Arabic is active and the optional value is non-empty. Password updates follow the demo's local demonstration behavior; they are not production authentication.
+
+### Account Search behavior
+
+The account **Search** tab searches the loaded top-level Projects and Jobs, not a separate flat index of descendant Tasks or Follow-ups. The text query covers item name, Arabic name, description, type/status values, and related creator/updater/owner/assignee identity information. The user selector can narrow results to a teammate associated with the top-level item through creation, last update, ownership, or assignment. It recognizes both the demo's short field aliases and the canonical AWS field names (including `createdByUserId`, `updatedByUserId`, `ownerId`, and `assignedTo` / related assignee aliases).
+
+Search also filters by Project/Job type and status. Its date selector supports **Last updated**, **Last created**, and **Created**; **From** and **To** are inclusive calendar-date bounds for the selected timestamp. **Created** sorts oldest first; **Last created** sorts newest first. **Clear** resets the query, type, status, date mode, date bounds, and user selector. The Project/Job workspace sidebar has its own independent filters and state.
+
+Each account Search result has separate **Open in workspace**, **Activity history**, and pin actions. The result card itself is not an action. Assigned Items and Pinned Items likewise expose explicit workspace and item-history actions.
+
+### Workspace navigation and history loading
+
+Opening a Project or Job from Search switches from My Account to the workspace view, selects the requested parent, and begins the parent's child-item hydration. Opening an assigned or pinned child resolves its root Project/Job, switches to the workspace, loads that root's children, expands Task ancestors after the hierarchy is available, and scrolls the selected child into view. Ancestor expansion is deliberately repeated after lazy loading: a parent Task may not be present in the account list's initial cache if it is assigned to another teammate.
+
+Expanding the workspace Search sidebar preserves the selected root and selected child. It restores the parent/detail view immediately, refreshes the selected root's children when needed, and restores the selected child position when the hierarchy finishes loading. A failed lazy request is logged and leaves the standard data-load retry path available rather than intentionally replacing a valid selection with a blank view.
+
+Activity history remains on-demand. Search, Assigned Items, and Pinned Items open the relevant history popup through the existing history loader/cache logic; the browser does not fetch all history merely to render an account list. Project/Job history uses the top-level hierarchy scope; child history uses the item's relevant history scope. Demo storage remains browser-local. No API, table, or schema migration is involved in these UI changes.
+
+### Mobile and keyboard behavior
+
+At tablet and mobile widths (820 CSS pixels and below), the account Search controls use two shrink-safe columns, with the query field spanning the full row. Date controls remain within their available grid width; action buttons can wrap rather than forcing the result row wider than the viewport. The same responsive layout works in English LTR and Arabic RTL. Non-clickable Search result cards are not exposed as focusable controls; users can keyboard-focus and activate the explicit buttons instead.
+
+### Validation and scope
+
+Regression tests cover the profile field order and label text, removal of the profile privilege input, date and user filter wiring, explicit Search actions, canonical AWS user-ID aliases, mobile filter-grid rules, post-hydration ancestor expansion, and selected-workspace restoration. Both repositories keep the same frontend interaction contract. In this public repository, authentication, user profiles, work items, activity and archive data remain demo-only local data. Never use the demo for real or confidential records.
