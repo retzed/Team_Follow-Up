@@ -9,8 +9,8 @@ A bilingual (English/Arabic) team workspace for organizing projects, jobs, tasks
 ## Try the demo
 
 1. Open the [hosted demo application](https://retzed.github.io/Team_Follow-Up/). If the site has not been published for this repository yet, follow the one-time [GitHub Pages setup](PROJECT_GUIDE.md#7-github-pages-publishing).
-2. Enter one of the built-in team usernames below. English and Arabic aliases are supported.
-3. Enter **any non-empty password** and sign in. The password is not checked; this is intentionally only a demonstration flow.
+2. Enter one of the built-in team usernames below. English and Arabic aliases are supported; use `root` for the protected demo root identity.
+3. The six standard demo users accept any non-empty password until they set one from their account page. The demo `root` login starts with password `root@1234`; root and changed demo passwords are checked using browser-local PBKDF2-HMAC-SHA-256 records. This remains a client-only simulation, not production authentication.
 4. Explore the comprehensive AWS deployment runbook built into the workspace: 16 documentation Projects plus a separate optional SAM/CloudFormation Job, a varied set of 3–5 Tasks per Project, 2–4 Follow-ups per Task, 1–4 direct Project checkpoints, and four Activity events per work item.
 
 | Demo teammate | Username (English) | Username (Arabic) | Team label |
@@ -21,8 +21,9 @@ A bilingual (English/Arabic) team workspace for organizing projects, jobs, tasks
 | Omar | `Omar` | `عمر` | AWS Engineer |
 | Haneen | `Haneen` | `حنين` | AWS Engineer |
 | Dina | `Dina` | `دينا` | AWS Engineer |
+| Root | `root` | — | System administrator (protected demo identity) |
 
-The demo username selects which teammate appears as the current user; the password does not protect an account. Demo sign-in is not suitable for real users or real data.
+The entered username is only used for sign-in and is not displayed as a profile field; **Display name** is the name shown throughout the app. The account page opens on **Assigned Items** and also provides **Profile**, **Pinned Items**, and **Search** tabs. Theme and language apply immediately; **Save changes** saves profile fields only. Profile icons are shown by name and preview before saving. The workspace keeps its own Search sidebar with a floating expand/collapse toggle. Do not use the demo for real users or real data.
 
 ### Where does demo data go?
 
