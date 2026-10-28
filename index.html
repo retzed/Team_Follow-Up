@@ -1212,7 +1212,7 @@ html[dir="rtl"] #signOutButton svg {
 <style id="account-hub-styles">
 .brand{border:0;background:transparent;color:inherit;padding:0;text-align:start;cursor:pointer}
 .acting-user{font:inherit;text-align:start;cursor:pointer}
-#sidebarAssignedTab{display:none!important}
+
 .sidebar-mode-tabs{grid-template-columns:1fr!important}
 .account-page{width:100%;padding:clamp(16px,3vw,34px);min-width:0}
 .account-page-inner{width:min(1150px,100%);margin:0 auto;display:flex;flex-direction:column;gap:20px}
@@ -1928,7 +1928,16 @@ function readTables(includeActivity=false){
   {id:'root',aliases:['root']}
  ];
  function resolveLocalTeamUserId(username){const value=norm(username);for(const user of localTeamUsers){if(user.aliases.some(alias=>norm(alias)===value))return user.id;}return null;}
- const LOCAL_PASSWORD_STORE='team-follow-up-local-password-hashes-v1';const ROOT_LOCAL_PASSWORD={iterations:210000,salt:'VGVhbUZvbGxvd1VwUm9vdFNhbHRWMQ==',hash:'vus7geP6u8jAJ8aW4c9Tbr67bQeTyefapvul/anxoKo='};function localBytesToBase64(bytes){let out='';for(const byte of bytes)out+=String.fromCharCode(byte);return btoa(out);}async function localPasswordHash(password,salt,iterations=210000){const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);const saltBytes=Uint8Array.from(atob(salt),ch=>ch.charCodeAt(0));const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:saltBytes,iterations,hash:'SHA-256'},key,256);return localBytesToBase64(new Uint8Array(bits));}function localPasswordRecord(userId){try{const all=JSON.parse(localStorage.getItem(LOCAL_PASSWORD_STORE)||'{}');return all[userId]||null;}catch{return null;}}async function verifyLocalPassword(userId,password){const stored=localPasswordRecord(userId);const record=stored||(userId==='root'?ROOT_LOCAL_PASSWORD:null);if(!record)return Boolean(String(password||'').length);try{return (await localPasswordHash(String(password||''),record.salt,record.iterations))===record.hash;}catch{return false;}}async function setLocalPassword(userId,oldPassword,newPassword){if(!await verifyLocalPassword(userId,oldPassword))throw new Error(root.lang==='ar'?'كلمة المرور الحالية غير صحيحة.':'The current password is incorrect.');const salt=localBytesToBase64(crypto.getRandomValues(new Uint8Array(16))),iterations=210000,hash=await localPasswordHash(newPassword,salt,iterations);const all=(()=>{try{return JSON.parse(localStorage.getItem(LOCAL_PASSWORD_STORE)||'{}');}catch{return {};}})();all[userId]={salt,iterations,hash,algorithm:'PBKDF2-SHA256'};localStorage.setItem(LOCAL_PASSWORD_STORE,JSON.stringify(all));}function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'local',localAuth:true,localUsername:String(username||''),changePassword:(oldPassword,newPassword)=>setLocalPassword(teamUserId,oldPassword,newPassword),getAccessToken:async()=>{throw new Error('Local demo sign-in does not issue server access tokens. The public demo uses browser-local data only.');}};}
+ const LOCAL_PASSWORD_STORE='team-follow-up-local-password-hashes-v1';
+function localBytesToBase64(bytes){let out='';for(const byte of bytes)out+=String.fromCharCode(byte);return btoa(out);}
+async function localPasswordHash(password,salt,iterations=210000){const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);const saltBytes=Uint8Array.from(atob(salt),ch=>ch.charCodeAt(0));const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:saltBytes,iterations,hash:'SHA-256'},key,256);return localBytesToBase64(new Uint8Array(bits));}
+function localPasswordRecord(userId){try{const all=JSON.parse(localStorage.getItem(LOCAL_PASSWORD_STORE)||'{}');return all[userId]||null;}catch{return null;}}
+async function saveLocalPasswordRecord(userId,password){const salt=localBytesToBase64(crypto.getRandomValues(new Uint8Array(16))),iterations=210000,hash=await localPasswordHash(String(password||''),salt,iterations);const all=(()=>{try{return JSON.parse(localStorage.getItem(LOCAL_PASSWORD_STORE)||'{}');}catch{return {};}})();all[userId]={salt,iterations,hash,algorithm:'PBKDF2-SHA256'};localStorage.setItem(LOCAL_PASSWORD_STORE,JSON.stringify(all));}
+const ROOT_LOCAL_PASSWORD={iterations:210000,salt:'VGVhbUZvbGxvd1VwUm9vdFNhbHRWMQ==',hash:'vus7geP6u8jAJ8aW4c9Tbr67bQeTyefapvul/anxoKo='};
+async function verifyLocalPassword(userId,password){const input=String(password||'');if(!input)return false;const stored=localPasswordRecord(userId);const record=stored||(userId==='root'?ROOT_LOCAL_PASSWORD:null);if(!record&&userId!=='root'){await saveLocalPasswordRecord(userId,input);return true;}try{const valid=(await localPasswordHash(input,record.salt,record.iterations))===record.hash;if(valid&&!stored)await saveLocalPasswordRecord(userId,input);return valid;}catch{return false;}}
+async function setLocalPassword(userId,oldPassword,newPassword){if(!await verifyLocalPassword(userId,oldPassword))throw new Error(root.lang==='ar'?'كلمة المرور الحالية غير صحيحة.':'The current password is incorrect.');await saveLocalPasswordRecord(userId,newPassword);}
+function uiCopyLocalPasswordIncorrect(){return root.lang==='ar'?'كلمة المرور الحالية غير صحيحة.':'The current password is incorrect.';}
+function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'local',localAuth:true,localUsername:String(username||''),changePassword:(oldPassword,newPassword)=>setLocalPassword(teamUserId,oldPassword,newPassword),getAccessToken:async()=>{throw new Error('Local demo sign-in does not issue server access tokens. The public demo uses browser-local data only.');}};}
  function initializeLocalAuth(){
   state.authMode='local';state.modules=null;state.mode='signIn';state.submitting=false;
   $('signInModeNote').textContent=copy.localWarning;$('signInModeNote').hidden=false;
@@ -3823,11 +3832,15 @@ async function persistPreferenceChanges(preferences){
 async function changeUserPreference(key,value){
  const user=rawCurrentUser();if(!user||user.id==='root')return;
  const oldLang=ui.lang,oldTheme=ui.theme;
- if(key==='lang')ui.lang=value;else if(key==='theme')ui.theme=value;render();
- try{const prefs={...(user.preferences||{}),lang:ui.lang,theme:ui.theme,[key]:value};const result=await window.TeamFollowUpDataApi.updateMyProfile({preferences:prefs});if(result?.user)mergeProfileIntoData(result.user);}
- catch(error){ui.lang=oldLang;ui.theme=oldTheme;render();toast(String(error?.message||tr('accountError')),true);}
+ if(key==='lang')ui.lang=value;else if(key==='theme')ui.theme=value;
+ render();
+ try{
+  const prefs={...(user.preferences||{}),lang:ui.lang,theme:ui.theme,[key]:value};
+  const result=await window.TeamFollowUpDataApi.updateMyProfile({preferences:prefs});
+  if(result?.user)mergeProfileIntoData(result.user);
+  render();
+ }catch(error){ui.lang=oldLang;ui.theme=oldTheme;render();toast(String(error?.message||tr('accountError')),true);}
 }
-
 function render(){applyTranslations();if(ui.page==='account'){renderAccountPage();renderModal();return;}renderParentList();renderDetail();renderModal();}
 function userOptions(current,includeNone=true){return `${includeNone?`<option value="" ${!current?'selected':''}>${esc(tr('none'))}</option>`:''}${data.users.map(raw=>{const u=person(raw.id);return `<option value="${esc(u.id)}" ${u.id===current?'selected':''}>${esc(u.name)} — ${esc(u.role)}</option>`;}).join('')}`;}
 function allowedChildTypes(parentId){const p=allItem(parentId);if(!p)return [];if(p.type==='project')return ['task','followup'];if(p.type==='job')return ['followup'];if(p.type==='task')return ['followup'];return [];}
@@ -4197,7 +4210,7 @@ function handleAction(target){const actionEl=target.closest('[data-action]');if(
  default:break;
 }}
 $('#app').addEventListener('click',ev=>{if($('#modalRoot').contains(ev.target))return;const actionEl=ev.target.closest('[data-action]');if(actionEl){if(actionEl.dataset.action==='backdrop-close'&&ev.target!==actionEl)return;ev.preventDefault();handleAction(actionEl);}});
-window.addEventListener('resize',()=>{const mobile=isMobileSidebarViewport();if(mobile!==previousMobileSidebarViewport){previousMobileSidebarViewport=mobile;ui.sidebarCollapsed=mobile;applyTranslations();}});
+window.addEventListener('resize',()=>{const mobile=isMobileSidebarViewport();if(mobile!==previousMobileSidebarViewport){previousMobileSidebarViewport=mobile;ui.sidebarCollapsed=false;applyTranslations();}});
 $('#app').addEventListener('keydown',ev=>{if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches('.parent-card[tabindex="0"]')&&!ev.target.querySelector(':focus')){ev.preventDefault();handleAction(ev.target);}});
 $('#modalRoot').addEventListener('click',ev=>{ev.stopPropagation();const actionEl=ev.target.closest('[data-action]');if(actionEl){if(actionEl.dataset.action==='backdrop-close'&&ev.target!==actionEl)return;if(actionEl.dataset.action==='backdrop-close'){ui.modal=null;renderModal();return;}ev.preventDefault();handleAction(actionEl);}});
 $('#modalRoot').addEventListener('submit',ev=>{if(ev.target.id==='itemForm'){ev.preventDefault();handleItemSubmit(ev.target);}});
