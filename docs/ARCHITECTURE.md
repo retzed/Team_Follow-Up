@@ -144,6 +144,12 @@ Activity remains on-demand instead of being fetched for every account result. It
 
 For responsive layout, the account Search filter grid switches to two shrink-safe columns at widths up to 820 CSS pixels, with the query spanning the row. Input/select controls have bounded widths, result action buttons wrap, and the same structure must work in both English LTR and Arabic RTL. Inert result cards are not focusable; their explicit buttons provide keyboard access. These frontend changes add no data model, API, or persistence contract.
 
+## Workspace Search sidebar lifecycle
+
+The Search sidebar's `ui.sidebarCollapsed` flag is the source of truth for the workspace grid, the sidebar content's `hidden` state, and the floating toggle's `aria-expanded` state. Startup and navigation from Account enter the workspace with the sidebar collapsed. The toggle uses a dedicated state transition instead of invoking a broad translation pass when closing.
+
+When the sidebar closes, the frontend clears any not-yet-fired top-level search timer and increments `sidebarQuerySequence`. `renderParentList()` checks the captured sequence both before and after asynchronous API work, preventing stale results from updating the closed sidebar. Opening uses the established in-memory list rendering and selected-root hydration logic. Resize events synchronize the current state but do not override it. This is a frontend lifecycle fix; it adds no API, storage, or deployment contract.
+
 ## Future evolution
 
 The preferred extension point is the data-access interface, not direct storage manipulation in view handlers. A future backend adapter should preserve the same public item/event model and the user-visible hierarchy/activity behavior while moving validation, authorization, concurrency control, auditing, and shared persistence to a trusted server. That transition requires security and integration tests against the server implementation; changing a browser configuration flag alone does not make the demo production-ready.
