@@ -32,7 +32,7 @@ These roles and profiles are demonstration data, not an authorization system. Th
 
 ### Account page
 
-The application opens on **My Account → Assigned Items**. Account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. Profile fields include display name, optional Arabic display name, phone, e-mail, icon, label, and optional Arabic label. The icon selector lists icon names and previews the current selection before saving. Theme and language changes apply immediately and persist independently of the Profile **Save changes** button. Password changes use the provider appropriate to the deployment: browser-local password simulation in this demo and Cognito in AWS. Pinned items are stored per user.
+The application opens on **My Account → Assigned Items**. Account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. Profile personal-detail fields are Display name, optional Arabic display name, phone, e-mail, Label, Label (Arabic), and Profile icon, with the two labels adjacent and Profile icon last. Privilege is shown beside the name in the top area, not as an editable Profile textbox. The icon selector lists icon names and previews the current selection before saving. Theme and language changes apply immediately and persist independently of the Profile **Save changes** button. Password changes use the provider appropriate to the deployment: browser-local password simulation in this demo and Cognito in AWS. Pinned items are stored per user.
 
 ### Main capabilities
 
@@ -76,7 +76,7 @@ Child items use the priority scale `low`, `medium`, `high`, and `urgent`. The im
 
 ### Search and assignment views
 
-The workspace sidebar remains a **Search** view over Projects and Jobs. It is expanded by default and can be expanded or collapsed using its floating toggle. **Assigned Items** is available in the account page rather than as a second sidebar mode; the account page's Search tab also searches Projects and Jobs without leaving that page. Workspace filters support type, status, date ranges, and text queries. Child-item filters scope results to the selected Project or Job. For a Job, only its direct Follow-ups are eligible; Tasks remain Project-only.
+The workspace sidebar remains a **Search** view over Projects and Jobs. It is expanded by default and can be expanded or collapsed using its floating toggle. **Assigned Items** is available in the account page rather than as a second sidebar mode. The account Search tab separately filters top-level Projects/Jobs by text, type, status, associated creator/updater/owner/assignee users, date sort mode, inclusive From/To dates, and Clear/reset. Account results have explicit Open in workspace and Activity history actions; Assigned/Pinned rows have workspace and history actions. Workspace filters support type, status, date ranges, and text queries. Child-item filters scope results to the selected Project or Job. For a Job, only its direct Follow-ups are eligible; Tasks remain Project-only.
 
 The interface includes clear/reset controls so a user can return to an unfiltered view. Counts reflect the active item scope rather than silently mixing different hierarchy levels.
 
