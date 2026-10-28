@@ -17,6 +17,7 @@ This is a browser UI/data-selection change only. The public demo remains local-s
 - Invalidated delayed and in-flight sidebar query results on close to prevent stale list renders after collapse.
 - Defaulted workspace Search to collapsed, including navigation from Account, while preserving the chosen state across viewport changes.
 - Added regression tests for DOM visibility, accessible expanded state, timer cancellation, query-sequence invalidation, and open/close behavior.
+- Fixed the underlying blank-workspace layout defect: collapsed mode now uses a single flexible grid column instead of leaving the main content in a zero-width first track.
 
 ## Current public demo
 

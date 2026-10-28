@@ -34,7 +34,7 @@ Account **Search** filters top-level Projects/Jobs by text, type, status, associ
 
 When opening an assigned or pinned child item, the UI switches to the workspace, hydrates the root Project/Job, expands Task ancestors after the child hierarchy loads, and scrolls the selected item into view. Expanding the workspace Search sidebar should retain the same selection. At widths up to 820 CSS pixels, Account Search uses two shrink-safe columns; query fills the row, date controls must not overflow, and action buttons may wrap. Verify in both English LTR and Arabic RTL.
 
-The workspace-level **Search** sidebar is collapsed by default, including when entering the workspace from the Account page. Use the floating sidebar control to expand it. Closing invalidates any pending top-level search refresh so an old response cannot re-render the panel after it closes. Reopening retains the selected Project/Job and uses the existing lazy child hydration path. Resizing the browser must not forcibly reopen Search.
+The workspace-level **Search** sidebar is collapsed by default, including when entering the workspace from the Account page. Use the floating sidebar control to expand it. Closing invalidates any pending top-level search refresh so an old response cannot re-render the panel after it closes. Reopening retains the selected Project/Job and uses the existing lazy child hydration path. Resizing the browser must not forcibly reopen Search. Its collapsed CSS grid is a single flexible column with the sidebar removed; a zero-width first track would make the main workspace appear blank.
 
 ### Demo data lifetime
 

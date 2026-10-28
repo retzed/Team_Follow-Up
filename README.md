@@ -79,7 +79,7 @@ The interface uses revisioned in-memory indexes for item lookup, parent/child re
 
 The regression suite includes checks for modal click propagation, deep/cyclic hierarchy traversal, date sorting, Activity merge integrity, and UI structure. Run `npm test` and `npm run build` before publishing a frontend change.
 
-The **Projects & Jobs** workspace Search sidebar starts collapsed. Its floating toggle updates sidebar visibility directly, cancels the queued top-level search timer, and invalidates in-flight search results before hiding the panel. Reopening continues to use the existing cached list and root-child loading flow; viewport changes preserve the selected collapsed/expanded state. Regression tests cover the toggle state and stale-response protection.
+The **Projects & Jobs** workspace Search sidebar starts collapsed. Its floating toggle updates sidebar visibility directly, cancels the queued top-level search timer, and invalidates in-flight search results before hiding the panel. Reopening continues to use the existing cached list and root-child loading flow; viewport changes preserve the selected collapsed/expanded state. Regression tests cover the toggle state and stale-response protection. The collapsed layout uses one flexible grid column after hiding the sidebar, so the main workspace cannot be placed in a zero-width track.
 
 ## System requirements
 

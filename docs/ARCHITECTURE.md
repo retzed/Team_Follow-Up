@@ -148,7 +148,7 @@ For responsive layout, the account Search filter grid switches to two shrink-saf
 
 The Search sidebar's `ui.sidebarCollapsed` flag is the source of truth for the workspace grid, the sidebar content's `hidden` state, and the floating toggle's `aria-expanded` state. Startup and navigation from Account enter the workspace with the sidebar collapsed. The toggle uses a dedicated state transition instead of invoking a broad translation pass when closing.
 
-When the sidebar closes, the frontend clears any not-yet-fired top-level search timer and increments `sidebarQuerySequence`. `renderParentList()` checks the captured sequence both before and after asynchronous API work, preventing stale results from updating the closed sidebar. Opening uses the established in-memory list rendering and selected-root hydration logic. Resize events synchronize the current state but do not override it. This is a frontend lifecycle fix; it adds no API, storage, or deployment contract.
+When the sidebar closes, the frontend clears any not-yet-fired top-level search timer and increments `sidebarQuerySequence`. `renderParentList()` checks the captured sequence both before and after asynchronous API work, preventing stale results from updating the closed sidebar. Opening uses the established in-memory list rendering and selected-root hydration logic. Resize events synchronize the current state but do not override it. This is a frontend lifecycle fix; it adds no API, storage, or deployment contract. The collapsed CSS removes the sidebar and defines exactly one flexible grid column. Keeping a zero-width first column would auto-place the remaining `<main>` item into that column and visually blank the workspace.
 
 ## Future evolution
 
