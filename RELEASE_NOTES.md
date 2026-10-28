@@ -11,6 +11,13 @@
 
 This is a browser UI/data-selection change only. The public demo remains local-storage-only and uses demonstration sign-in; it does not become a shared database or a production authentication system.
 
+## 28 October 2026 — Workspace Search collapse stability
+
+- Fixed Search sidebar close handling by separating visibility state updates from the full translation refresh.
+- Invalidated delayed and in-flight sidebar query results on close to prevent stale list renders after collapse.
+- Defaulted workspace Search to collapsed, including navigation from Account, while preserving the chosen state across viewport changes.
+- Added regression tests for DOM visibility, accessible expanded state, timer cancellation, query-sequence invalidation, and open/close behavior.
+
 ## Current public demo
 
 - Bilingual English/Arabic workspace for projects, jobs, tasks, and follow-ups.
