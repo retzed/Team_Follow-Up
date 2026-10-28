@@ -344,8 +344,10 @@ assert.equal(sidebarNodes.toggle.attributes['aria-expanded'],'true','The toggle 
 // Mobile-only Search toggle and account/assigned card width regressions.
 check(html.includes('id="mobileSearchToggle" class="mobile-search-toggle"') &&
       html.includes("mobileToggle.hidden=ui.page==='account'||!isMobileSidebarViewport();") &&
-      html.includes("toggle.hidden=ui.page==='account'||isMobileSidebarViewport();"),
-  'The labelled Search projects & Jobs control is mobile-only, while the floating icon is desktop-only.');
+      html.includes("toggle.hidden=ui.page==='account'||isMobileSidebarViewport();") &&
+      html.includes("window.matchMedia('(max-width: 820px)').matches") &&
+      !html.includes("function isMobileSidebarViewport(){try{return typeof window.matchMedia==='function'&&isMobileSidebarViewport();"),
+  'The labelled Search projects & Jobs control is mobile-only, the floating icon is desktop-only, and viewport detection is non-recursive.');
 check(html.includes('.mobile-search-toggle:not([hidden]){display:flex;') &&
       html.includes('.account-search-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));') &&
       html.includes('.account-search-controls input,.account-search-controls select,.account-search-controls button{width:100%;min-width:0;max-width:100%;box-sizing:border-box}'),
@@ -358,5 +360,10 @@ check(html.includes('.assigned-card .parent-card-copy{display:block!important;fl
       html.includes('.assigned-card .parent-card-title,.assigned-card .parent-card-type{display:block!important;width:100%;') &&
       html.includes('.assigned-card .mini-updated{display:flex!important;width:100%;'),
   'Workspace Assigned-mode cards keep readable titles and metadata within the mobile viewport.');
+check(html.includes('#accountPage .account-search-results .parent-card {') &&
+      html.includes('#accountPage .account-search-results .parent-card-copy') &&
+      html.includes('#accountPage .account-search-results .account-item-actions .pin-item-btn') &&
+      html.includes('flex:0 0 36px!important;'),
+  'Profile Search result cards are capped to the available mobile width and keep the pin control alongside the action buttons.');
 
 console.log('UI refinement tests passed: activity history, bilingual UI, profile/Search filters, workspace navigation, desktop/mobile Search toggles, and responsive Account/Assigned layouts.');
