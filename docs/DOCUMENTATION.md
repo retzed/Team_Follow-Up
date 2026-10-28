@@ -290,6 +290,12 @@ Activity history remains on-demand. Search, Assigned Items, and Pinned Items ope
 
 At tablet and mobile widths (820 CSS pixels and below), the account Search controls use two shrink-safe columns, with the query field spanning the full row. Date controls remain within their available grid width; action buttons can wrap rather than forcing the result row wider than the viewport. The same responsive layout works in English LTR and Arabic RTL. Non-clickable Search result cards are not exposed as focusable controls; users can keyboard-focus and activate the explicit buttons instead.
 
+### Workspace Search sidebar lifecycle
+
+The workspace-level Search sidebar starts collapsed at startup and when navigation enters the workspace from the Account page. The floating control is the single explicit open/close interaction. It synchronizes the layout class, panel `hidden` state, and `aria-expanded` value without running the full translation refresh for a close operation.
+
+Closing Search clears a queued sidebar query timer and advances the sidebar query sequence. Any already-running API query checks that sequence before rendering results, so a response started before the close cannot rewrite a hidden panel or race with a later query. Reopening renders the existing in-memory list first and preserves the selected workspace item and existing root-child hydration behavior. Crossing the mobile/tablet breakpoint preserves the user's current expanded/collapsed choice instead of opening the panel automatically.
+
 ### Validation and scope
 
 Regression tests cover the profile field order and label text, removal of the profile privilege input, date and user filter wiring, explicit Search actions, canonical AWS user-ID aliases, mobile filter-grid rules, post-hydration ancestor expansion, and selected-workspace restoration. Both repositories keep the same frontend interaction contract. In this public repository, authentication, user profiles, work items, activity and archive data remain demo-only local data. Never use the demo for real or confidential records.
