@@ -9,6 +9,14 @@ const result = spawnSync(process.execPath, ['scripts/build.mjs'], {
 assert.equal(result.status, 0, 'Local demo build should succeed without cloud variables. ' + result.stderr);
 
 const html = await readFile('dist/index.html', 'utf8');
+const authGateStart = html.indexOf('<script id="pre-auth-gate">');
+assert.ok(authGateStart >= 0, 'page includes the pre-authentication sign-in gate');
+const authGateEnd = html.indexOf('</script>', authGateStart);
+assert.ok(authGateEnd > authGateStart, 'pre-authentication sign-in gate is a complete script');
+const authGate = html.slice(authGateStart, authGateEnd);
+assert.ok(authGate.includes('src="./logo.svg?v=20261030-brandrefresh2"'), 'sign-in logo is rendered without relying on the later app script');
+assert.ok(!authGate.includes('applicationLogoMarkup()'), 'pre-auth sign-in cannot call helpers from the later app bootstrap script');
+
 const marker = 'window.TEAM_FOLLOW_UP_CONFIG = Object.freeze(';
 const markerStart = html.indexOf(marker);
 assert.ok(markerStart >= 0, 'built demo must include runtime configuration');
