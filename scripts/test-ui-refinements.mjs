@@ -261,8 +261,10 @@ check(profileIconLabelStart>=0 && profileIconLabelEnd>profileIconLabelStart &&
       profileIconLabelSource.includes("'communications-engineering':'Antenna'") &&
       profileIconLabelSource.includes("'badge-check':'Badge'") &&
       profileIconLabelSource.includes("'cowboy-hat':'Cowboy'") &&
+      profileIconLabelSource.includes("engineer:'Engineer'") &&
+      profileIconLabelSource.includes("wave:'Wave'") &&
       profileIconLabelSource.includes("'graduation-cap':'Graduate'") &&
-      !/:\\s*tr\\(/.test(profileIconLabelSource),
+      !profileIconLabelSource.includes("tr('icon"),
   'Profile icon names retain their English labels regardless of interface language.');
 const personStart=html.indexOf('function person(id)');
 const personEnd=html.indexOf('function currentUser()',personStart);
