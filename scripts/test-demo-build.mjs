@@ -35,6 +35,13 @@ assert.equal(await readFile('dist/.nojekyll', 'utf8'), '', 'static artifact cont
 for (const asset of ['logo.svg', 'favicon.svg', 'favicon.png', 'favicon.ico']) {
   assert.deepEqual(await readFile('dist/' + asset), await readFile(asset), `static artifact includes the deployed ${asset} asset`);
 }
+const deployedLogo = await readFile('dist/logo.svg', 'utf8');
+assert.ok(deployedLogo.includes('fill="#5b62e8"'), 'logo uses the application purple accent');
+assert.ok(!deployedLogo.includes('#102e50'), 'logo no longer uses the low-contrast navy');
+const deployedFavicon = await readFile('dist/favicon.svg', 'utf8');
+assert.ok(deployedFavicon.includes('fill="#5b62e8"'), 'favicon uses the same application purple accent');
+assert.ok(!deployedFavicon.includes('#102e50'), 'favicon no longer uses the low-contrast navy');
+
 assert.ok(html.includes('Local demo sign-in is enabled.'), 'demo login explains that authentication is not real');
 assert.ok(!html.includes('REPLACE_WITH_COGNITO_USER_POOL_ID') && !html.includes('REPLACE_WITH_PUBLIC_APP_CLIENT_ID'), 'built demo contains no authentication placeholders');
 
