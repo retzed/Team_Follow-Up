@@ -279,8 +279,10 @@ check(passwordStart>=0 && passwordEnd>passwordStart &&
       passwordMarkup.indexOf("for='passwordCurrent'")<passwordMarkup.indexOf("for='passwordNew'") &&
       passwordMarkup.indexOf("for='passwordNew'")<passwordMarkup.indexOf("for='passwordConfirm'") &&
       passwordMarkup.includes("id='passwordCurrentCheck'") &&
-      passwordMarkup.includes("id='passwordConfirmCheck'"),
-  'Current, New and Confirm password fields use the ordinary two-column grid and have independent success-check controls.');
+      !passwordMarkup.includes("id='passwordConfirmCheck'") &&
+      html.includes("passwordVerified:'Passwords match.'") &&
+      html.includes("passwordVerified:'كلمتا المرور متطابقتان.'"),
+  'Current, New and Confirm password fields use the ordinary two-column grid; only the current-password field has a success check and its status label is translated to 'Passwords match.'.');
 check(html.includes('id="mobile-profile-search-date-width-fix"') &&
       html.includes('#accountPage .account-search-controls > .account-search-date-from-field,') &&
       html.includes('overflow: hidden !important;') &&
@@ -426,16 +428,18 @@ check(mobileDateRowFix.includes('grid-template-columns: repeat(2, minmax(0, 1fr)
       mobileDateRowFix.includes('#accountPage .account-assigned-controls'),
   'Profile Search and Assigned Items keep From/To side by side and constrain date inputs to half-width grid columns on mobile, including narrow phones.');
 
-check(html.includes("id='passwordCurrentCheck'") && html.includes("id='passwordConfirmCheck'") &&
+check(html.includes("id='passwordCurrentCheck'") && !html.includes("id='passwordConfirmCheck'") &&
+      html.includes("passwordVerified:'Passwords match.'") &&
       !html.includes("class='account-field full'><label for='passwordCurrent'") &&
       html.includes(".account-password-check[hidden]{display:none!important}"),
-  'Current password shares the two-column profile grid; verified-current and matching-new-password checkmarks are independently available.');
+  'Current password shares the two-column profile grid and is the only password field with a check mark; its success label reads 'Passwords match.'.');
 check(html.includes('function verifyCurrentPasswordField(input)') &&
       html.includes('currentPasswordVerificationSequence++') &&
       html.includes('verifiedCurrentPasswordValue===value') &&
       html.includes('currentPasswordVerificationInFlight') &&
-      html.includes("first.length>=8&&second.length>0&&first===second"),
-  'Password verification is bound to the exact input value, deduplicates in-flight requests, ignores stale responses, and only marks matching new passwords of at least eight characters.');
+      html.includes("if(newPassword!==confirmPassword){report(tr('passwordMismatch'),true);return;}") &&
+      !html.includes("function updatePasswordPairCheck"),
+  'Current-password verification is bound to the exact value, deduplicates in-flight requests, ignores stale responses, and keeps new-password length and mismatch validation enforced without a confirmation check mark.');
 check(html.includes("focusout',ev=>{if(ev.target?.id==='passwordCurrent'") &&
       html.includes("ev.target.id==='passwordNew'||ev.target.id==='passwordConfirm'"),
   'Password validation is interactive on current-password focus loss and new-password input changes.');
