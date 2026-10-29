@@ -252,6 +252,18 @@ const profileRoleArabicPos=html.indexOf('for="accountRoleArabic"');
 const profileIconPos=html.indexOf('for="accountIcon"');
 check(profileRolePos>=0 && profileRoleArabicPos>profileRolePos && profileIconPos>profileRoleArabicPos,
   'Profile Label fields remain adjacent with Profile icon as the final personal-detail field.');
+const profileIconLabelStart=html.indexOf('const iconOptions=ACCOUNT_ICONS.map');
+const profileIconLabelEnd=html.indexOf('const privLabel=',profileIconLabelStart);
+const profileIconLabelSource=html.slice(profileIconLabelStart,profileIconLabelEnd);
+check(profileIconLabelStart>=0 && profileIconLabelEnd>profileIconLabelStart &&
+      profileIconLabelSource.includes("networking:'Network'") &&
+      profileIconLabelSource.includes("systems:'Servers'") &&
+      profileIconLabelSource.includes("'communications-engineering':'Antenna'") &&
+      profileIconLabelSource.includes("'badge-check':'Badge'") &&
+      profileIconLabelSource.includes("'cowboy-hat':'Cowboy'") &&
+      profileIconLabelSource.includes("'graduation-cap':'Graduate'") &&
+      !/:\\s*tr\\(/.test(profileIconLabelSource),
+  'Profile icon names retain their English labels regardless of interface language.');
 const personStart=html.indexOf('function person(id)');
 const personEnd=html.indexOf('function currentUser()',personStart);
 const personSource=html.slice(personStart,personEnd);
