@@ -11,7 +11,7 @@ assert.equal(result.status, 0, 'Local demo build should succeed without cloud va
 const html = await readFile('dist/index.html', 'utf8');
 assert.ok(html.includes("$('#workspaceEyebrow').hidden=ui.page==='account';"), 'account page hides the duplicate MY ACCOUNT eyebrow while keeping the bold title');
 assert.ok(html.includes("cpu:'CPU'"), 'CPU profile-icon label uses the standard uppercase spelling');
-assert.ok(html.includes("networking:'<path d=\"M12 3.1"), 'Network profile icon uses the detailed connected-node vector');
+assert.ok(html.includes("networking:'<g stroke-width=\"1.4\"><path d=\"M12 1.2L4.5 4.3"), 'Network profile icon preserves the reference mesh silhouette and inner connections');
 assert.ok(!html.includes("networking:'<circle cx=\"12\" cy=\"5\" r=\"2.5\""), 'old three-node network icon has been replaced');
 const authGateStart = html.indexOf('<script id="pre-auth-gate">');
 assert.ok(authGateStart >= 0, 'page includes the pre-authentication sign-in gate');
