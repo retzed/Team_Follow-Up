@@ -24,6 +24,9 @@ assert.equal(config.cognito.userPoolId, '', 'public demo must not contain a user
 assert.equal(config.cognito.userPoolClientId, '', 'public demo must not contain an app-client identifier');
 assert.ok(html.includes('team-follow-up-local-auth-v1'), 'built demo includes the local demo session flow');
 assert.equal(await readFile('dist/.nojekyll', 'utf8'), '', 'static artifact contains .nojekyll');
+for (const asset of ['favicon.svg', 'favicon.png', 'favicon.ico']) {
+  assert.deepEqual(await readFile('dist/' + asset), await readFile(asset), `static artifact includes the deployed ${asset} asset`);
+}
 assert.ok(html.includes('Local demo sign-in is enabled.'), 'demo login explains that authentication is not real');
 assert.ok(!html.includes('REPLACE_WITH_COGNITO_USER_POOL_ID') && !html.includes('REPLACE_WITH_PUBLIC_APP_CLIENT_ID'), 'built demo contains no authentication placeholders');
 
