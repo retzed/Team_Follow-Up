@@ -30,7 +30,7 @@ await mkdir(outputDirectory, { recursive: true });
 await writeFile(outputDirectory + '/index.html', output, 'utf8');
 await writeFile(outputDirectory + '/.nojekyll', '', 'utf8');
 
-for (const asset of ['favicon.svg', 'favicon.png', 'favicon.ico']) {
+for (const asset of ['logo.svg', 'favicon.svg', 'favicon.png', 'favicon.ico']) {
   await copyFile(asset, outputDirectory + '/' + asset);
 }
 console.log('Built the local Team Follow-Up demo to dist/ (browser-local data, demo sign-in enabled).');
