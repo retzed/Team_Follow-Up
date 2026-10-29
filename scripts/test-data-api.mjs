@@ -200,6 +200,24 @@ auditHistory=await api.queryActivity(auditRoot.id,'all');
 assert.ok(auditHistory.events.some(e=>e.id==='evt-audit-delete-child'),'older child deletion history must remain after restore');
 assert.ok(auditHistory.events.some(e=>e.kind==='restore'&&e.itemId===auditRoot.id),'restore event must appear in the root history');
 
+// Regression: Profile updates must not depend on the main UI's private uid() helper,
+// and ordinary addresses with plus tags and multi-part domains must pass built-in validation.
+const profileUpdate = await api.updateMyProfile({
+  name: 'Marwa Profile Regression',
+  nameArabic: 'مروة للاختبار',
+  phoneNumber: '+20 100 123 4567',
+  email: 'marwa+profile@example.co.uk',
+  role: 'Regression Test Label',
+  roleArabic: 'مسمى للاختبار'
+});
+assert.equal(profileUpdate.user.name, 'Marwa Profile Regression', 'Profile display name is saved');
+assert.equal(profileUpdate.user.phoneNumber, '+20 100 123 4567', 'Profile phone number is saved');
+assert.equal(profileUpdate.user.email, 'marwa+profile@example.co.uk', 'A valid plus-tag email is saved');
+assert.equal(profileUpdate.user.role, 'Regression Test Label', 'Profile label is saved');
+assert.ok(profileUpdate.activityEvents.length > 0, 'Profile changes return their audit events');
+assert.equal(new Set(profileUpdate.activityEvents.map(e => e.id)).size, profileUpdate.activityEvents.length,
+  'each Profile audit event has a unique ID');
+
 const methodCalls = window.__TEAM_FOLLOW_UP_API_LOG || [];
 assert.ok(methodCalls.some(x => x.method === 'GET' && x.path === '/users'), 'startup loads enabled team profiles');
 assert.ok(methodCalls.some(x => x.method === 'GET' && x.path.startsWith('/items?scope=top-level')), 'startup loads top-level Projects/Jobs');
