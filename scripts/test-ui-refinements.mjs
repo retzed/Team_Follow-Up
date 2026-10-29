@@ -408,4 +408,14 @@ check(html.includes('#accountPage .account-search-results .parent-card {') &&
       html.includes('flex:0 0 36px!important;'),
   'Profile Search result cards are capped to the available mobile width and keep the pin control alongside the action buttons.');
 
+
+const mobileDateRowFix = html.match(/<style id="mobile-profile-date-row-width-fix">([\\s\\S]*?)<\\/style>/)?.[1] || '';
+check(mobileDateRowFix.includes('grid-template-columns: repeat(2, minmax(0, 1fr)) !important;') &&
+      mobileDateRowFix.includes('"from to"') &&
+      mobileDateRowFix.includes('min-inline-size: 0 !important;') &&
+      mobileDateRowFix.includes('max-inline-size: 100% !important;') &&
+      mobileDateRowFix.includes('@media (max-width: 380px)') &&
+      mobileDateRowFix.includes('#accountPage .account-assigned-controls'),
+  'Profile Search and Assigned Items keep From/To side by side and constrain date inputs to half-width grid columns on mobile, including narrow phones.');
+
 console.log('UI refinement tests passed: activity history, bilingual UI, profile/Search filters, workspace navigation, desktop/mobile Search toggles, and responsive Account/Assigned layouts.');
