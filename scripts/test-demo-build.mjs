@@ -11,7 +11,7 @@ assert.equal(result.status, 0, 'Local demo build should succeed without cloud va
 const html = await readFile('dist/index.html', 'utf8');
 assert.ok(html.includes("$('#workspaceEyebrow').hidden=ui.page==='account';"), 'account page hides the duplicate MY ACCOUNT eyebrow while keeping the bold title');
 assert.ok(html.includes("cpu:'CPU'"), 'CPU profile-icon label uses the standard uppercase spelling');
-assert.ok(html.includes("networking:'<g stroke-width=\"1.4\"><path d=\"M12 1.2L4.5 4.3"), 'Network profile icon preserves the reference mesh silhouette and inner connections');
+assert.ok(html.includes('networking:\'<image href="./network-icon.svg"'), 'Network profile icon renders the high-quality vector asset');
 assert.ok(!html.includes("networking:'<circle cx=\"12\" cy=\"5\" r=\"2.5\""), 'old three-node network icon has been replaced');
 const authGateStart = html.indexOf('<script id="pre-auth-gate">');
 assert.ok(authGateStart >= 0, 'page includes the pre-authentication sign-in gate');
@@ -36,7 +36,7 @@ assert.equal(config.cognito.userPoolId, '', 'public demo must not contain a user
 assert.equal(config.cognito.userPoolClientId, '', 'public demo must not contain an app-client identifier');
 assert.ok(html.includes('team-follow-up-local-auth-v1'), 'built demo includes the local demo session flow');
 assert.equal(await readFile('dist/.nojekyll', 'utf8'), '', 'static artifact contains .nojekyll');
-for (const asset of ['logo.svg', 'favicon.svg', 'favicon.png', 'favicon.ico']) {
+for (const asset of ['logo.svg', 'favicon.svg', 'favicon.png', 'favicon.ico', 'network-icon.svg']) {
   assert.deepEqual(await readFile('dist/' + asset), await readFile(asset), `static artifact includes the deployed ${asset} asset`);
 }
 const deployedLogo = await readFile('dist/logo.svg', 'utf8');
