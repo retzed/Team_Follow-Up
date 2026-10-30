@@ -11,6 +11,18 @@ assert.equal(result.status, 0, 'Local demo build should succeed without cloud va
 const html = await readFile('dist/index.html', 'utf8');
 assert.ok(html.includes("$('#workspaceEyebrow').hidden=ui.page==='account';"), 'account page hides the duplicate MY ACCOUNT eyebrow while keeping the bold title');
 assert.ok(html.includes("cpu:'CPU'"), 'CPU profile-icon label uses the standard uppercase spelling');
+assert.ok(html.includes('const ICON_PALETTES = {'), 'profile icons use dedicated color palettes while retaining their source SVG paths');
+for (const name of ['compass','wrench','cpu','engineer','database','crown','helmet','layers']) {
+  assert.ok(html.includes(name+':{stroke:['), `color palette is defined for ${name}`);
+}
+assert.ok(html.includes("wrench:{stroke:['#536477','#DCE5EF','#77879B']"), 'Wrench uses a silver/chrome palette');
+assert.ok(html.includes("crown:{stroke:['#874606','#D99518','#FFE18A']"), 'Crown uses a gold palette');
+assert.ok(html.includes("layers:{stroke:['#F0444C','#3295D9','#6658DA','#F28A19']"), 'Layers uses the former logo color palette');
+assert.ok(html.includes("function icon(name,size=16)") && html.includes("stroke=\"url(#'+id+'-stroke)\""), 'the icon renderer applies SVG gradients to the existing vector paths');
+assert.ok(html.includes('M14.7 6.3a5 5 0 0 0-6.4 6.4') &&
+          html.includes('M5.6 8.1C6 5 8.1 3.2') &&
+          html.includes('M3.8 13.2v-1.5a8.2 8.2'),
+  'Wrench, Engineer, and Helmet silhouettes remain based on the original SVG geometry');
 assert.ok(html.includes('networking:\'<image href="./network-icon.svg"'), 'Network profile icon renders the high-quality vector asset');
 assert.ok(!html.includes("networking:'<circle cx=\"12\" cy=\"5\" r=\"2.5\""), 'old three-node network icon has been replaced');
 const authGateStart = html.indexOf('<script id="pre-auth-gate">');
