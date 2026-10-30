@@ -12,11 +12,16 @@ const html = await readFile('dist/index.html', 'utf8');
 assert.ok(html.includes("$('#workspaceEyebrow').hidden=ui.page==='account';"), 'account page hides the duplicate MY ACCOUNT eyebrow while keeping the bold title');
 assert.ok(html.includes("cpu:'CPU'"), 'CPU profile-icon label uses the standard uppercase spelling');
 assert.ok(html.includes('const ICON_PALETTES = {'), 'profile icons use dedicated color palettes while retaining their source SVG paths');
-for (const name of ['compass','wrench','cpu','engineer','database','crown','helmet','layers']) {
+for (const name of ['compass','wrench','cpu','engineer','database','helmet','layers']) {
   assert.ok(html.includes(name+':{stroke:['), `color palette is defined for ${name}`);
 }
 assert.ok(html.includes("wrench:{stroke:['#536477','#DCE5EF','#77879B']"), 'Wrench uses a silver/chrome palette');
-assert.ok(html.includes("crown:{stroke:['#874606','#D99518','#FFE18A']"), 'Crown uses a gold palette');
+assert.ok(html.includes("compass:{stroke:['#35465B','#AEBCCB','#405873']") && html.includes("accent:['#E11D48','#F97316','#FBBF24']"), 'Compass uses a metallic dial and a red/orange directional needle');
+assert.ok(html.includes("cpu:{stroke:['#102A56','#1479C9','#35D4CF']") && html.includes("accent:['#B7F7FF','#43DCEB','#28B7D4']"), 'CPU uses a dark silicon body with bright electronic circuitry');
+assert.ok(html.includes("engineer:{stroke:['#594015','#C78A22','#31557A']") && html.includes("skin:['#FFD7B5','#F1AC82','#C97954']"), 'Engineer uses a safety-yellow hard hat, blue clothing, and a warm face tone');
+assert.ok(html.includes("database:{stroke:['#123B5A','#0EA5B7','#65E0C2']") && html.includes("accent:['#D0FFF1','#65E6CF','#18B6A5']"), 'Database uses deep teal-blue with bright aqua data highlights');
+assert.ok(!html.slice(html.indexOf('const ICON_PALETTES = {'), html.indexOf('let iconRenderSequence')).includes('crown:{'), 'Crown is removed from the color palette and returns to its original currentColor outline');
+assert.ok(!html.slice(html.indexOf('function icon(name,size=16)'), html.indexOf('\nfunction ', html.indexOf('function icon(name,size=16)'))).includes("name==='crown'") && html.includes("crown:'<path d=\"m3 7 5 5 4-8 4 8 5-5-2 12H5L3 7Z\"/><path d=\"M5 22h14\"/>"), 'Crown uses its untouched original shape without a special fill override');
 assert.ok(html.includes("layers:{stroke:['#F0444C','#3295D9','#6658DA','#F28A19']"), 'Layers uses the former logo color palette');
 assert.ok(html.includes("function icon(name,size=16)") && html.includes("stroke=\"url(#'+id+'-stroke)\""), 'the icon renderer applies SVG gradients to the existing vector paths');
 assert.ok(html.includes('M14.7 6.3a5 5 0 0 0-6.4 6.4') &&
