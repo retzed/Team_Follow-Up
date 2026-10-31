@@ -41,7 +41,11 @@ assert.ok(html.includes('M14.7 6.3a5 5 0 0 0-6.4 6.4') &&
           html.includes('M5.6 8.1C6 5 8.1 3.2') &&
           html.includes('M3.8 13.2v-1.5a8.2 8.2'),
   'Wrench, Engineer, and Helmet silhouettes remain based on the original SVG geometry');
-assert.ok(html.includes('networking:\'<image href="./network-icon.svg"'), 'Network profile icon renders the high-quality vector asset');
+assert.ok(html.includes('const NETWORKING_ICON_SVG =') &&
+          html.includes("if(name==='networking')") &&
+          html.includes('networking-icon-'),
+  'Network profile icon embeds the gradient artwork with unique per-instance SVG IDs');
+assert.ok(!html.includes('network-icon.svg'), 'Network artwork has no external file dependency');
 assert.ok(!html.includes("networking:'<circle cx=\"12\" cy=\"5\" r=\"2.5\""), 'old three-node network icon has been replaced');
 const authGateStart = html.indexOf('<script id="pre-auth-gate">');
 assert.ok(authGateStart >= 0, 'page includes the pre-authentication sign-in gate');
