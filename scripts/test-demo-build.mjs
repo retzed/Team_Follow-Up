@@ -11,7 +11,7 @@ assert.equal(result.status, 0, 'Local demo build should succeed without cloud va
 const html = await readFile('dist/index.html', 'utf8');
 assert.ok(html.includes("$('#workspaceEyebrow').hidden=ui.page==='account';"), 'account page hides the duplicate MY ACCOUNT eyebrow while keeping the bold title');
 assert.ok(html.includes("cpu:'CPU'"), 'CPU profile-icon label uses the standard uppercase spelling');
-assert.ok(html.includes("user:'<path d=\"M12 11.65c-2.5 0-4.25-2.02") && html.includes('M9.2 11.1v1.28') && html.includes('m9.25 14.18 2.75 2.27') && !html.includes('user:\'<circle cx="12" cy="8" r="4"/>'), 'User icon uses a shaped head, defined neck, natural shoulders and collar instead of the generic circle-and-arch glyph');
+assert.ok(html.includes("user:'<path d=\\\"M12 11.65c-2.5 0-4.25-2.02") && html.includes('M9.3 11.35v1.05') && html.includes('C4.35 15.95 3 17.55 3 19.75V21h18v-1.25') && !html.includes('m9.25 14.18 2.75 2.27') && !html.includes('user:\'<circle cx="12" cy="8" r="4"/>'), 'User icon uses a shaped head and a smooth neck-to-shoulder bust outline without the distracting collar detail');
 assert.ok(html.includes('const ICON_PALETTES = {'), 'profile icons use dedicated color palettes while retaining their source SVG paths');
 for (const name of ['wrench','database','helmet','layers']) {
   assert.ok(html.includes(name+':{stroke:['), `color palette is defined for ${name}`);
