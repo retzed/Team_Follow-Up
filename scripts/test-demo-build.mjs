@@ -11,7 +11,7 @@ assert.equal(result.status, 0, 'Local demo build should succeed without cloud va
 const html = await readFile('dist/index.html', 'utf8');
 assert.ok(html.includes("$('#workspaceEyebrow').hidden=ui.page==='account';"), 'account page hides the duplicate MY ACCOUNT eyebrow while keeping the bold title');
 assert.ok(html.includes("cpu:'CPU'"), 'CPU profile-icon label uses the standard uppercase spelling');
-assert.ok(html.includes('M12 11.65c-2.5 0-4.25-2.02-4.25-4.62') && html.includes('M8.15 5.95c.6-1.75 1.92-2.7 3.85-2.7s3.25.95 3.85 2.7') && html.includes('M9.05 11.25v1.12') && html.includes('C4.25 15.9 3 17.55 3 19.72V21h18v-1.28') && !html.includes('m9.25 14.18 2.75 2.27') && !html.includes('M4 21v-2a8 8 0 0 1 16 0v2'), 'User icon retains its bust silhouette with a subtle hairline, natural neck and shoulder contours, and no collar');
+assert.ok(html.includes('M12 11.65c-2.5 0-4.25-2.02-4.25-4.62') && !html.includes('M8.15 5.95') && html.includes('M9.05 11.25v1.12') && html.includes('C4.25 15.9 3 17.55 3 19.72V21h18v-1.28') && !html.includes('m9.25 14.18 2.75 2.27') && !html.includes('M4 21v-2a8 8 0 0 1 16 0v2'), 'User icon keeps its clean original head contour with the refined neck and shoulder silhouette, without hairline or collar details');
 assert.ok(html.includes('const ICON_PALETTES = {'), 'profile icons use dedicated color palettes while retaining their source SVG paths');
 for (const name of ['wrench','database','helmet','layers']) {
   assert.ok(html.includes(name+':{stroke:['), `color palette is defined for ${name}`);
