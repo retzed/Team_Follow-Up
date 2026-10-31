@@ -280,8 +280,8 @@ check(accountIconRegistryStart>=0 && profileIconResolverStart>accountIconRegistr
       profileIconResolver.includes("const profileName=name==='user'?'profile-user':name") &&
       profileIconResolver.includes(":'profile-user';") &&
       userAvatarSource.includes("raw.icon||roleIcons[raw.role]||'profile-user'") &&
-      html.includes("user:'<circle cx=\\"12\\" cy=\\"8\\" r=\\"4\\"/>") &&
-      html.includes("'profile-user':'<path d=\\"M12 11.65") &&
+      html.includes("user:'<circle cx=\"12\" cy=\"8\" r=\"4\"/>") &&
+      html.includes("'profile-user':'<path d=\"M12 11.65") &&
       html.includes("${icon('user',14)}"),
   'The generic User glyph stays in UI controls while profile avatars use the separate profile-user bust; old saved user values continue to render as the bust.');
 
