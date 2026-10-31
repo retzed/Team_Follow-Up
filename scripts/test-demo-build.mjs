@@ -70,7 +70,8 @@ assert.equal(config.cognito.userPoolId, '', 'public demo must not contain a user
 assert.equal(config.cognito.userPoolClientId, '', 'public demo must not contain an app-client identifier');
 assert.ok(html.includes('team-follow-up-local-auth-v1'), 'built demo includes the local demo session flow');
 assert.equal(await readFile('dist/.nojekyll', 'utf8'), '', 'static artifact contains .nojekyll');
-const embeddedSvgImages = [...html.matchAll(/(?:src|href)="data:image[.]svg[+]xml;base64,([^"]+)"/g)]
+const embeddedSvgImages = html.split('data:image/svg+xml;base64,').slice(1)
+  .map(encoded => Buffer.from(encoded.slice(0, encoded.indexOf('"')), 'base64').toString('utf8'));
   .map(match => Buffer.from(match[1], 'base64').toString('utf8'));
 const deployedLogo = embeddedSvgImages.find(svg => svg.includes('viewBox="0 0 512 420"'));
 assert.ok(deployedLogo, 'static artifact embeds the application logo as SVG data');
