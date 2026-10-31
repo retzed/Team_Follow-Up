@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const source = await readFile('index.html', 'utf8');
 const outputDirectory = 'dist';
@@ -30,7 +30,4 @@ await mkdir(outputDirectory, { recursive: true });
 await writeFile(outputDirectory + '/index.html', output, 'utf8');
 await writeFile(outputDirectory + '/.nojekyll', '', 'utf8');
 
-for (const asset of ['logo.svg', 'favicon.svg', 'favicon.png', 'favicon.ico', 'network-icon.svg']) {
-  await copyFile(asset, outputDirectory + '/' + asset);
-}
 console.log('Built the local Team Follow-Up demo to dist/ (browser-local data, demo sign-in enabled).');

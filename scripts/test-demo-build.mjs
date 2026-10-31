@@ -52,7 +52,7 @@ assert.ok(authGateStart >= 0, 'page includes the pre-authentication sign-in gate
 const authGateEnd = html.indexOf('</script>', authGateStart);
 assert.ok(authGateEnd > authGateStart, 'pre-authentication sign-in gate is a complete script');
 const authGate = html.slice(authGateStart, authGateEnd);
-assert.ok(authGate.includes('src="./logo.svg?v=20261030-brandrefresh2"'), 'sign-in logo is rendered without relying on the later app script');
+assert.ok(authGate.includes('src="data:image/svg+xml;base64,'), 'sign-in logo is embedded and rendered without relying on the later app script');
 assert.ok(!authGate.includes('applicationLogoMarkup()'), 'pre-auth sign-in cannot call helpers from the later app bootstrap script');
 
 const marker = 'window.TEAM_FOLLOW_UP_CONFIG = Object.freeze(';
@@ -70,15 +70,18 @@ assert.equal(config.cognito.userPoolId, '', 'public demo must not contain a user
 assert.equal(config.cognito.userPoolClientId, '', 'public demo must not contain an app-client identifier');
 assert.ok(html.includes('team-follow-up-local-auth-v1'), 'built demo includes the local demo session flow');
 assert.equal(await readFile('dist/.nojekyll', 'utf8'), '', 'static artifact contains .nojekyll');
-for (const asset of ['logo.svg', 'favicon.svg', 'favicon.png', 'favicon.ico', 'network-icon.svg']) {
-  assert.deepEqual(await readFile('dist/' + asset), await readFile(asset), `static artifact includes the deployed ${asset} asset`);
-}
-const deployedLogo = await readFile('dist/logo.svg', 'utf8');
-assert.ok(deployedLogo.includes('fill="#5b62e8"'), 'logo uses the application purple accent');
-assert.ok(!deployedLogo.includes('#102e50'), 'logo no longer uses the low-contrast navy');
-const deployedFavicon = await readFile('dist/favicon.svg', 'utf8');
-assert.ok(deployedFavicon.includes('fill="#5b62e8"'), 'favicon uses the same application purple accent');
-assert.ok(!deployedFavicon.includes('#102e50'), 'favicon no longer uses the low-contrast navy');
+const embeddedSvgImages = [...html.matchAll(/(?:src|href)="data:image\\/svg\\+xml;base64,([^"]+)"/g)]
+  .map(match => Buffer.from(match[1], 'base64').toString('utf8'));
+const deployedLogo = embeddedSvgImages.find(svg => svg.includes('viewBox="0 0 512 420"'));
+assert.ok(deployedLogo, 'static artifact embeds the application logo as SVG data');
+assert.ok(deployedLogo.includes('fill="#5b62e8"'), 'embedded logo uses the application purple accent');
+assert.ok(!deployedLogo.includes('#102e50'), 'embedded logo no longer uses the low-contrast navy');
+const deployedFavicon = embeddedSvgImages.find(svg => svg.includes('viewBox="0 0 512 512"'));
+assert.ok(deployedFavicon, 'static artifact embeds the SVG favicon as image data');
+assert.ok(deployedFavicon.includes('fill="#5b62e8"'), 'embedded favicon uses the same application purple accent');
+assert.ok(!deployedFavicon.includes('#102e50'), 'embedded favicon no longer uses the low-contrast navy');
+assert.ok(html.includes('href="data:image/png;base64,') && html.includes('href="data:image/x-icon;base64,'), 'static artifact embeds PNG and ICO favicon variants');
+assert.ok(!/(?:src|href)=["'](?:\\.\\/|\\/)?[^"']+\\.(?:svg|png|jpe?g|gif|webp|ico)(?:[?#][^"']*)?["']/i.test(html), 'static artifact has no external image-file dependencies');
 
 assert.ok(html.includes('Local demo sign-in is enabled.'), 'demo login explains that authentication is not real');
 assert.ok(!html.includes('REPLACE_WITH_COGNITO_USER_POOL_ID') && !html.includes('REPLACE_WITH_PUBLIC_APP_CLIENT_ID'), 'built demo contains no authentication placeholders');
