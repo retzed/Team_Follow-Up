@@ -65,6 +65,75 @@ vm.runInNewContext(helpers + '\nthis.createBuiltinRealtimeChange=createBuiltinRe
   assert.deepEqual([...change.topLevelIds], ['project-1']);
 }
 
+const handlerStart = html.indexOf('async function handleDemoRealtimeChange(change){');
+const handlerEnd = html.indexOf('async function togglePinnedItem(itemId){', handlerStart);
+assert.ok(handlerStart >= 0 && handlerEnd > handlerStart, 'the demo real-time view handler must exist');
+const handlerSource = html.slice(handlerStart, handlerEnd);
+
+function createHandlerContext(userId, loading = false) {
+  const calls = { assigned: 0 };
+  const ui = {
+    actingUserId: userId,
+    page: 'account',
+    accountTab: 'assigned',
+    accountAssignedLoaded: true,
+    accountAssignedLoading: loading,
+    accountPinnedRows: [],
+    modal: null,
+    selectedParentId: ''
+  };
+  const handlerContext = {
+    window: { TeamFollowUpDataApi: { mode: 'builtin', resolveItems: async () => ({ items: [] }) } },
+    ui,
+    data: { parents: [], children: [] },
+    rawCurrentUser: () => ({ id: userId }),
+    rootParent: () => null,
+    loadAccountAssignedItems: () => { calls.assigned += 1; return Promise.resolve(); },
+    loadAccountPinnedItems: () => Promise.resolve(),
+    renderParentList: () => {},
+    renderDetail: () => {},
+    renderAccountPage: () => {},
+    ensureRootChildrenLoaded: async () => {},
+    refreshActivityFor: async () => {},
+    refreshApplicationHistory: () => {},
+    allItem: () => null,
+    toAppItem: row => row,
+    invalidateHierarchyIndex: () => {},
+    console: { warn() {} },
+    Promise, Set, Map, String, Array
+  };
+  vm.runInNewContext(handlerSource + '\\nthis.handleDemoRealtimeChange=handleDemoRealtimeChange;', handlerContext);
+  return { handlerContext, calls, ui };
+}
+
+{
+  const change = { type: 'items.changed', changeId: 'assignment-u1-u2', itemId: 'task-1', itemIds: ['task-1'], assigneeIds: ['u1', 'u2'] };
+  const oldAssignee = createHandlerContext('u1');
+  const newAssignee = createHandlerContext('u2');
+  const unrelatedUser = createHandlerContext('u3');
+
+  await oldAssignee.handlerContext.handleDemoRealtimeChange(change);
+  await newAssignee.handlerContext.handleDemoRealtimeChange(change);
+  await unrelatedUser.handlerContext.handleDemoRealtimeChange(change);
+
+  assert.equal(oldAssignee.ui.accountAssignedLoaded, false, 'the previous assignee invalidates its Assigned Items view');
+  assert.equal(newAssignee.ui.accountAssignedLoaded, false, 'the new assignee invalidates its Assigned Items view');
+  assert.equal(oldAssignee.calls.assigned, 1, 'the previous assignee refreshes an open Assigned Items tab');
+  assert.equal(newAssignee.calls.assigned, 1, 'the new assignee refreshes an open Assigned Items tab');
+  assert.equal(unrelatedUser.calls.assigned, 0, 'unrelated demo users do not reload Assigned Items');
+}
+
+{
+  const pendingRefresh = createHandlerContext('u2', true);
+  await pendingRefresh.handlerContext.handleDemoRealtimeChange({
+    type: 'items.changed', changeId: 'assignment-while-loading', itemId: 'task-2',
+    itemIds: ['task-2'], assigneeIds: ['u1', 'u2']
+  });
+  assert.equal(pendingRefresh.ui.accountAssignedLoaded, false, 'a change arriving during load invalidates the in-flight view');
+  assert.equal(pendingRefresh.handlerContext.demoAssignedRefreshPending, true, 'a change arriving during load schedules one follow-up refresh');
+  assert.equal(pendingRefresh.calls.assigned, 0, 'the in-flight request is not duplicated immediately');
+}
+
 assert.ok(html.includes("new BroadcastChannel('team-follow-up-demo-realtime-v1')"),
   'same-origin demo tabs use BroadcastChannel for prompt update delivery.');
 assert.ok(html.includes("event.key!==REALTIME_SIGNAL_KEY||!event.newValue"),
