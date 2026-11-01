@@ -102,7 +102,7 @@ function createHandlerContext(userId, loading = false) {
     console: { warn() {} },
     Promise, Set, Map, String, Array
   };
-  vm.runInNewContext('let demoAssignedRefreshPending=false;\\n' + handlerSource + '\\nthis.handleDemoRealtimeChange=handleDemoRealtimeChange;this.hasPendingAssignedRefresh=()=>demoAssignedRefreshPending;', handlerContext);
+  vm.runInNewContext('let demoAssignedRefreshPending=false;' + String.fromCharCode(10) + handlerSource + String.fromCharCode(10) + 'this.handleDemoRealtimeChange=handleDemoRealtimeChange;this.hasPendingAssignedRefresh=()=>demoAssignedRefreshPending;', handlerContext);
   return { handlerContext, calls, ui };
 }
 
