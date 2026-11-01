@@ -1321,6 +1321,9 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
  const ACTIVITY_TABLE_KEY='team-follow-up-builtin-dynamodb-activity-table-v4';
  const ACTIVITY_EVENT_PREFIX='team-follow-up-builtin-dynamodb-activity-event-v4:';
  const names=Object.freeze({workItems:'TeamFollowUp-WorkItems',activity:'TeamFollowUp-ActivityEvents',users:'TeamFollowUp-UserProfiles',archive:'TeamFollowUp-Archive'});
+ const REALTIME_SIGNAL_KEY='team-follow-up-demo-realtime-signal-v1';
+ const realtimeListeners=new Set(),seenRealtimeChangeIds=new Set();
+ let realtimeChannel=null,pendingRealtimeChange=null;
  let memoryTables=null;let tableStorageSaveTimer=0;
  const clone=value=>JSON.parse(JSON.stringify(value??null));
  const now=()=>new Date().toISOString();
@@ -1351,8 +1354,115 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
   if(migrated)tables.workItems=remaining;
   return {tables,migrated};
  }
+ function builtinItemMap(tables){
+  const map=new Map();
+  for(const row of [...(tables?.workItems||[]),...(tables?.archiveItems||[])]){
+   const id=String(row?.itemId||row?.archiveId||row?.id||'');if(id)map.set(id,row);
+  }
+  return map;
+ }
+ function builtinItemRoot(row){
+  if(!row)return '';
+  const id=String(row.itemId||row.archiveId||row.id||'');
+  const type=String(row.type||'');
+  if(type==='project'||type==='job')return id;
+  return String(row.rootParentId||row.archiveRootId||row.parentId||'');
+ }
+ function createBuiltinRealtimeChange(previous,next){
+  if(!previous||!next)return null;
+  const oldMap=builtinItemMap(previous),newMap=builtinItemMap(next);
+  const ids=new Set([...oldMap.keys(),...newMap.keys()]);
+  const itemIds=[],rootParentIds=new Set(),topLevelIds=new Set(),parentIds=new Set(),assigneeIds=new Set();
+  let changeKind='updated',deleted=false;
+  for(const id of ids){
+   const oldRow=oldMap.get(id),newRow=newMap.get(id);
+   if(JSON.stringify(oldRow??null)===JSON.stringify(newRow??null))continue;
+   itemIds.push(id);
+   const rows=[oldRow,newRow].filter(Boolean);
+   for(const row of rows){
+    const type=String(row.type||''),rowId=String(row.itemId||row.archiveId||row.id||'');
+    const rootId=builtinItemRoot(row);if(rootId)rootParentIds.add(rootId);
+    if(type==='project'||type==='job')topLevelIds.add(rowId);
+    const parentId=String(row.parentId||row.archiveParentId||'');if(parentId)parentIds.add(parentId);
+    const ownerId=String(row.ownerId||row.assignedTo||'');if(ownerId)assigneeIds.add(ownerId);
+   }
+   if(!oldRow&&newRow)changeKind='created';
+   else if(oldRow&&!newRow){changeKind='deleted';deleted=true;}
+   else if(newRow&&!next.workItems?.some(row=>String(row.itemId||row.id||'')===id)){deleted=true;}
+  }
+  if(!itemIds.length)return null;
+  const changeId='demo-change-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);
+  return {
+   type:'items.changed',changeId,cursor:new Date().toISOString()+'#'+changeId,changeKind,
+   itemId:itemIds[0],itemIds,rootParentIds:[...rootParentIds],topLevelIds:[...topLevelIds],
+   parentIds:[...parentIds],assigneeIds:[...assigneeIds],deleted,occurredAt:new Date().toISOString()
+  };
+ }
+ function mergePendingBuiltinChange(change){
+  if(!change)return;
+  if(!pendingRealtimeChange){pendingRealtimeChange=change;return;}
+  const current=pendingRealtimeChange;
+  for(const key of ['itemIds','rootParentIds','topLevelIds','parentIds','assigneeIds']){
+   current[key]=[...new Set([...(current[key]||[]),...(change[key]||[])])];
+  }
+  current.itemId=current.itemIds?.[0]||current.itemId;
+  current.changeId=change.changeId;current.cursor=change.cursor;current.occurredAt=change.occurredAt;
+  current.deleted=current.deleted||change.deleted;
+  if(current.changeKind!==change.changeKind)current.changeKind='updated';
+ }
+ function mergeBuiltinTablesFromDisk(change){
+  if(!memoryTables||!Array.isArray(change?.itemIds)||!change.itemIds.length)return;
+  let stored;
+  try{stored=JSON.parse(localStorage.getItem(TABLES_KEY)||'null');}catch(error){return;}
+  if(!stored||!Array.isArray(stored.workItems))return;
+  const ids=new Set(change.itemIds.map(String));
+  const activeById=new Map((stored.workItems||[]).map(row=>[String(row.itemId||row.id||''),row]));
+  const archivedById=new Map((stored.archiveItems||[]).map(row=>[String(row.archiveId||row.itemId||row.id||''),row]));
+  memoryTables.workItems=(memoryTables.workItems||[]).filter(row=>!ids.has(String(row.itemId||row.id||'')));
+  memoryTables.archiveItems=(memoryTables.archiveItems||[]).filter(row=>!ids.has(String(row.archiveId||row.itemId||row.id||'')));
+  for(const id of ids){
+   if(activeById.has(id))memoryTables.workItems.push(activeById.get(id));
+   if(archivedById.has(id))memoryTables.archiveItems.push(archivedById.get(id));
+  }
+  if(activityTableLoaded){
+   const incoming=readActivityEventsForItems([...ids]);
+   const keep=(memoryTables.activityEvents||[]).filter(event=>!ids.has(String(event.itemId||'')));
+   const merged=new Map(keep.map(event=>[String(event.eventId||event.id||''),event]));
+   for(const event of incoming)merged.set(String(event.eventId||event.id||''),event);
+   memoryTables.activityEvents=[...merged.values()];activityTableDirty=false;
+  }
+ }
+ function receiveBuiltinRealtimeChange(change){
+  if(!change||change.type!=='items.changed'||!change.changeId||seenRealtimeChangeIds.has(String(change.changeId)))return;
+  seenRealtimeChangeIds.add(String(change.changeId));
+  if(seenRealtimeChangeIds.size>500)seenRealtimeChangeIds.delete(seenRealtimeChangeIds.values().next().value);
+  mergeBuiltinTablesFromDisk(change);
+  for(const listener of realtimeListeners){try{listener(change);}catch(error){console.warn('A local real-time view refresh failed.',error);}}
+ }
+ function publishBuiltinRealtimeChange(change){
+  if(!change)return;
+  try{realtimeChannel?.postMessage(change);}catch(error){}
+  try{localStorage.setItem(REALTIME_SIGNAL_KEY,JSON.stringify(change));}
+  catch(error){console.warn('The local demo change signal could not be stored.',error);}
+ }
+ function subscribeRealtimeChanges(listener){
+  if(typeof listener!=='function')return ()=>{};
+  realtimeListeners.add(listener);
+  return ()=>realtimeListeners.delete(listener);
+ }
+ try{
+  if(typeof BroadcastChannel==='function'){
+   realtimeChannel=new BroadcastChannel('team-follow-up-demo-realtime-v1');
+   realtimeChannel.addEventListener('message',event=>receiveBuiltinRealtimeChange(event.data));
+  }
+ }catch(error){realtimeChannel=null;}
+ if(typeof window.addEventListener==='function')window.addEventListener('storage',event=>{
+  if(event.key!==REALTIME_SIGNAL_KEY||!event.newValue)return;
+  try{receiveBuiltinRealtimeChange(JSON.parse(event.newValue));}catch(error){}
+ });
  function flushTableStorage(){
   if(tableStorageSaveTimer){clearTimeout(tableStorageSaveTimer);tableStorageSaveTimer=0;}
+  let persisted=false;
   try{
    if(!memoryTables)return;
    const primary=clone(memoryTables);delete primary.activityEvents;
@@ -1362,7 +1472,9 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
     for(let i=localStorage.length-1;i>=0;i--){const key=localStorage.key(i);if(key&&key.startsWith(ACTIVITY_EVENT_PREFIX))localStorage.removeItem(key);}
     activityTableDirty=false;
    }
+   persisted=true;
   }catch(e){console.warn('Built-in tables cannot persist in browser storage; this session will use memory storage.',e);}
+  if(persisted&&pendingRealtimeChange){const change=pendingRealtimeChange;pendingRealtimeChange=null;publishBuiltinRealtimeChange(change);}
  }
  function scheduleTableStorageSave(){if(typeof setTimeout!=='function'){flushTableStorage();return;}if(tableStorageSaveTimer)clearTimeout(tableStorageSaveTimer);tableStorageSaveTimer=setTimeout(()=>{tableStorageSaveTimer=0;flushTableStorage();},0);}
  if(typeof window.addEventListener==='function')window.addEventListener('pagehide',flushTableStorage,{capture:true});
@@ -1508,6 +1620,7 @@ function readTables(includeActivity=false){
  }
  function writeTables(t){
   const wasUninitialized=!memoryTables;
+  const previous=wasUninitialized?null:memoryTables;
   memoryTables=t;
   if(wasUninitialized&&Array.isArray(t.activityEvents)){
    const seedEvents=t.activityEvents.slice();
@@ -1515,6 +1628,7 @@ function readTables(includeActivity=false){
    try{memoryTables.activityEvents=persistInitialActivityBatch(seedEvents);localStorage.removeItem(ACTIVITY_TABLE_KEY);}
    catch(e){memoryTables.activityEvents=seedEvents;activityTableLoaded=true;activityTableDirty=true;}
   }else if(activityTableLoaded)activityTableDirty=true;
+  if(previous)mergePendingBuiltinChange(createBuiltinRealtimeChange(previous,t));
   scheduleTableStorageSave();
  }
  function ensureIndexFields(item){
@@ -1856,7 +1970,7 @@ function readTables(includeActivity=false){
  async function updateUserPrivilege(userId,privilege){return request('PATCH','/users/'+encodeURIComponent(userId),{privilege});}
  async function updateMyPins(itemIds){return request('PATCH','/users/me/pins',{itemIds:[...new Set((itemIds||[]).map(String))]});}
  async function resolveItems(ids){const params=new URLSearchParams({ids:[...new Set((ids||[]).map(String))].join(',')});return request('GET','/items/resolve?'+params.toString());}
- window.TeamFollowUpDataApi=Object.freeze({mode,tableNames:names,request,bootstrap,commitSnapshot,queryTopLevel,queryChildren,queryRootItems,queryAssigned,queryActivity,queryGlobalActivity,listArchive,restoreArchive,verifyCurrentPassword,getMyProfile,updateMyProfile,updateUserPrivilege,updateMyPins,resolveItems});
+ window.TeamFollowUpDataApi=Object.freeze({mode,tableNames:names,request,bootstrap,commitSnapshot,subscribeRealtimeChanges,queryTopLevel,queryChildren,queryRootItems,queryAssigned,queryActivity,queryGlobalActivity,listArchive,restoreArchive,verifyCurrentPassword,getMyProfile,updateMyProfile,updateUserPrivilege,updateMyPins,resolveItems});
 })();
 </script>
 
