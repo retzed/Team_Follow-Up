@@ -29,7 +29,8 @@ The entered username is used only for sign-in; **Display name** is the name show
 
 - Work items, assignments, archive entries, and activity events are saved in the browser's `localStorage` for this site.
 - The demo sign-in session is stored in the current browser tab's `sessionStorage`.
-- Visitors using another browser, device, profile, or private window have a separate local workspace. The app does not synchronize demo data over the internet.
+- Open tabs/windows using the same browser profile and same site origin receive compact same-origin change signals, so an assignment or item edit in one tab refreshes the affected Assigned Items/workspace views in the other tabs. The demo uses `BroadcastChannel` with a `localStorage` storage-event fallback; it does not send demo data or notifications over the internet.
+- Another browser profile, private window, browser, or device has a separate local workspace and does not receive these demo signals. For cross-device, multi-user real-time delivery, use the separate AWS deployment, which uses authenticated WebSockets and a durable change cursor.
 - The built-in workspace is intentionally large: **a few hundred work items and four Activity events per item**. It organizes the AWS project step by step across architecture, account/cost setup, Cognito, all four DynamoDB tables and five GSIs, IAM/Lambda, API Gateway, Amplify, frontend integration, lazy loading, archive/restore, CloudWatch, acceptance testing, recovery, and an isolated optional SAM/CloudFormation path.
 - The enlarged fixture is demo-only and remains in browser storage. It is not uploaded, synchronized, or seeded into the AWS deployment account. The demo’s built-in storage namespace was versioned so existing browser profiles start with the new runbook data after the updated app is published; earlier demo data remains isolated under the old local-storage keys.
 
