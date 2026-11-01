@@ -3,6 +3,11 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const femaleUserIcon = html.match(/'female-user':'([^']+)'/);
+assert.ok(femaleUserIcon, 'Female User must exist in the inline SVG icon registry.');
+assert.ok(femaleUserIcon[1].includes('<circle cx="12" cy="8" r="4"/>') && femaleUserIcon[1].includes('M8 8.4c0 2.7-.6 4.8-2.1 6.2'), 'Female User must retain the User icon head silhouette and add matching long-hair details.');
+assert.ok(html.includes("{value:'female-user'}") && html.includes("'female-user':'Female User'"), 'Female User must be selectable and have its explicit display label.');
+assert.ok(html.includes("if(!['user','profile-user','female-user','compass'"), 'The demo profile API must accept the Female User icon value.');
 const targetedStart = html.indexOf('<style id="targeted-history-and-child-search-polish">');
 const targetedEnd = html.indexOf('</style>', targetedStart);
 assert.ok(targetedStart >= 0 && targetedEnd > targetedStart, 'Targeted refinements stylesheet must exist.');
