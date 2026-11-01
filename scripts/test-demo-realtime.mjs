@@ -102,7 +102,7 @@ function createHandlerContext(userId, loading = false) {
     console: { warn() {} },
     Promise, Set, Map, String, Array
   };
-  vm.runInNewContext(handlerSource + '\\nthis.handleDemoRealtimeChange=handleDemoRealtimeChange;', handlerContext);
+  vm.runInNewContext('let demoAssignedRefreshPending=false;\\n' + handlerSource + '\\nthis.handleDemoRealtimeChange=handleDemoRealtimeChange;this.hasPendingAssignedRefresh=()=>demoAssignedRefreshPending;', handlerContext);
   return { handlerContext, calls, ui };
 }
 
@@ -130,7 +130,7 @@ function createHandlerContext(userId, loading = false) {
     itemIds: ['task-2'], assigneeIds: ['u1', 'u2']
   });
   assert.equal(pendingRefresh.ui.accountAssignedLoaded, false, 'a change arriving during load invalidates the in-flight view');
-  assert.equal(pendingRefresh.handlerContext.demoAssignedRefreshPending, true, 'a change arriving during load schedules one follow-up refresh');
+  assert.equal(pendingRefresh.handlerContext.hasPendingAssignedRefresh(), true, 'a change arriving during load schedules one follow-up refresh');
   assert.equal(pendingRefresh.calls.assigned, 0, 'the in-flight request is not duplicated immediately');
 }
 
