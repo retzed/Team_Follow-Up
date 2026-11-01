@@ -200,11 +200,13 @@ The local adapter emulates common access patterns using derived fields for top-l
 
 - `localStorage` stores the demo workspace and its built-in logical tables.
 - `sessionStorage` remembers the active demo identity for the tab.
-- Demo users within the same profile see the same local workspace.
-- Different browsers/devices/profiles/incognito windows do not share state.
+- Demo users within the same browser profile see the same local workspace.
+- Built-in item mutations create a compact change signal containing affected item, hierarchy, and previous/current assignee IDs. The adapter persists the changed tables first, then publishes the signal through `BroadcastChannel`; the browser `storage` event is the fallback transport.
+- Each active same-origin tab merges only the changed records from browser storage. If its signed-in user is the previous or new assignee, an open **Assigned Items** tab refreshes immediately. If an assignment request is already running, a follow-up refresh is queued; if the tab is elsewhere, its Assigned Items cache is marked stale and reloads when opened.
+- Different browser profiles, separate browsers, private sessions, and devices do not share state. The public demo does not broadcast between different visitors or across devices.
 - There is no synchronized multi-user database, server backup, or cross-device data transfer.
 
-The data is editable by the visitor through browser developer tools. Local persistence is not durable storage for important work.
+The data is editable by the visitor through browser developer tools. Local persistence and cross-tab notifications are demo conveniences, not a security boundary or durable shared service.
 
 ## 8. Build, test, and publish
 
