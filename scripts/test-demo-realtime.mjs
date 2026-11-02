@@ -136,7 +136,7 @@ function createHandlerContext(userId, loading = false) {
 
 
 {
-  const flushStart = html.indexOf(' function flushTableStorage(){');
+  const flushStart = html.indexOf(' function flushTableStorageNow(){');
   const flushEnd = html.indexOf(' function scheduleTableStorageSave()', flushStart);
   assert.ok(flushStart >= 0 && flushEnd > flushStart, 'the built-in storage writer must exist');
   const flushSource = html.slice(flushStart, flushEnd);
@@ -178,8 +178,8 @@ function createHandlerContext(userId, loading = false) {
     publishBuiltinRealtimeChange: change => { flushContext.published = change; },
     console: { warn() {} }
   };
-  vm.runInNewContext(flushSource + '\nthis.flushTableStorage=flushTableStorage;', flushContext);
-  flushContext.flushTableStorage();
+  vm.runInNewContext(flushSource + '\nthis.flushTableStorageNow=flushTableStorageNow;', flushContext);
+  flushContext.flushTableStorageNow();
   const merged = JSON.parse(storage.getItem('team-follow-up-builtin-dynamodb-tables-v4'));
   const byId = new Map(merged.workItems.map(row => [row.itemId, row]));
   assert.equal(byId.get('task-a').name, 'A from another tab', 'a stale writer cannot overwrite a different item saved by another tab');
