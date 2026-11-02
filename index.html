@@ -1324,7 +1324,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
  const REALTIME_SIGNAL_KEY='team-follow-up-demo-realtime-signal-v1';
  const realtimeListeners=new Set(),seenRealtimeChangeIds=new Set();
  let realtimeChannel=null,pendingRealtimeChange=null;
- let pendingBuiltinProfileIds=new Set();
+ let pendingBuiltinProfileIds=new Set(),lastRealtimeSignalId='';
  let memoryTables=null;let tableStorageSaveTimer=0;
  const clone=value=>JSON.parse(JSON.stringify(value??null));
  const now=()=>new Date().toISOString();
@@ -1435,16 +1435,42 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
  }
  function receiveBuiltinRealtimeChange(change){
   if(!change||change.type!=='items.changed'||!change.changeId||seenRealtimeChangeIds.has(String(change.changeId)))return;
-  seenRealtimeChangeIds.add(String(change.changeId));
+  seenRealtimeChangeIds.add(String(change.changeId));lastRealtimeSignalId=String(change.changeId);
   if(seenRealtimeChangeIds.size>500)seenRealtimeChangeIds.delete(seenRealtimeChangeIds.values().next().value);
   mergeBuiltinTablesFromDisk(change);
   for(const listener of realtimeListeners){try{listener(change);}catch(error){console.warn('A local real-time view refresh failed.',error);}}
  }
+ function reconcileBuiltinTablesFromDisk(){
+  if(!memoryTables||pendingRealtimeChange||pendingBuiltinProfileIds.size||tableStorageSaveTimer)return;
+  let stored;
+  try{stored=JSON.parse(localStorage.getItem(TABLES_KEY)||'null');}catch(error){return;}
+  if(!stored||!Array.isArray(stored.workItems))return;
+  const change=createBuiltinRealtimeChange(memoryTables,stored);
+  if(change){
+   seenRealtimeChangeIds.add(String(change.changeId));
+   if(seenRealtimeChangeIds.size>500)seenRealtimeChangeIds.delete(seenRealtimeChangeIds.values().next().value);
+   mergeBuiltinTablesFromDisk(change);
+   for(const listener of realtimeListeners){try{listener(change);}catch(error){console.warn('A reconciled local real-time view refresh failed.',error);}}
+  }
+  if(Array.isArray(stored.userProfiles))memoryTables.userProfiles=clone(stored.userProfiles);
+ }
  function publishBuiltinRealtimeChange(change){
   if(!change)return;
+  lastRealtimeSignalId=String(change.changeId||'');
   try{realtimeChannel?.postMessage(change);}catch(error){}
   try{localStorage.setItem(REALTIME_SIGNAL_KEY,JSON.stringify(change));}
   catch(error){console.warn('The local demo change signal could not be stored.',error);}
+ }
+ function pollBuiltinRealtimeSignal(){
+  if(document.hidden)return;
+  try{
+   const raw=localStorage.getItem(REALTIME_SIGNAL_KEY);if(!raw)return;
+   const change=JSON.parse(raw);
+   if(change?.changeId&&String(change.changeId)!==lastRealtimeSignalId){
+    receiveBuiltinRealtimeChange(change);
+    reconcileBuiltinTablesFromDisk();
+   }
+  }catch(error){}
  }
  function subscribeRealtimeChanges(listener){
   if(typeof listener!=='function')return ()=>{};
@@ -1454,13 +1480,20 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
  try{
   if(typeof BroadcastChannel==='function'){
    realtimeChannel=new BroadcastChannel('team-follow-up-demo-realtime-v1');
-   realtimeChannel.addEventListener('message',event=>receiveBuiltinRealtimeChange(event.data));
+   realtimeChannel.addEventListener('message',event=>{receiveBuiltinRealtimeChange(event.data);reconcileBuiltinTablesFromDisk();});
   }
  }catch(error){realtimeChannel=null;}
- if(typeof window.addEventListener==='function')window.addEventListener('storage',event=>{
-  if(event.key!==REALTIME_SIGNAL_KEY||!event.newValue)return;
-  try{receiveBuiltinRealtimeChange(JSON.parse(event.newValue));}catch(error){}
+ if(typeof window.addEventListener==='function'){
+  window.addEventListener('storage',event=>{
+   if(event.key!==REALTIME_SIGNAL_KEY||!event.newValue)return;
+   try{receiveBuiltinRealtimeChange(JSON.parse(event.newValue));reconcileBuiltinTablesFromDisk();}catch(error){}
+  });
+  window.addEventListener('focus',reconcileBuiltinTablesFromDisk);
+ }
+ if(typeof document.addEventListener==='function')document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){pollBuiltinRealtimeSignal();reconcileBuiltinTablesFromDisk();}
  });
+ if(typeof setInterval==='function')setInterval(pollBuiltinRealtimeSignal,5000);
  function flushTableStorageNow(){
   if(tableStorageSaveTimer){clearTimeout(tableStorageSaveTimer);tableStorageSaveTimer=0;}
   let persisted=false;
