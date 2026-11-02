@@ -1756,7 +1756,7 @@ function readTables(includeActivity=false){
   const respond=value=>Promise.resolve(clone(value));
   const persist=()=>writeTables(tables);
   const allActive=()=>tables.workItems.filter(x=>!x.deletedAt);
-  const normalizeItemName=value=>String(value??'').normalize('NFKC').trim().replace(/\\s+/g,' ').toLowerCase();
+  const normalizeItemName=value=>String(value??'').normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
   const assertUniqueItemName=(name,exceptId='')=>{
    const normalized=normalizeItemName(name);
    if(!normalized)throw new Error('Item name is required.');
