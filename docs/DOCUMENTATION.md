@@ -59,6 +59,12 @@ Projects and Jobs are top-level work containers. They cannot be created as child
 
 The client enforces these rules to guide the user and avoid invalid forms. The demo's checks run entirely in the browser and are not a security boundary.
 
+### Global item-name uniqueness
+
+Item names share one global namespace across **Projects, Jobs, Tasks, and Follow-ups**. A name cannot be reused by another item even when the item types differ or the items belong to different parents. Comparison applies Unicode NFKC normalization, trims leading/trailing whitespace, collapses repeated whitespace, and ignores letter case. The original entered name remains the displayed name.
+
+Archived items continue to reserve their names; archiving or deleting an item does not make its name available. Restoring an archived item is checked against the same global namespace. The built-in demo adapter validates creates, edits, and restores against active and archived records.
+
 ### Common item fields
 
 A work item can contain an identifier, item type, name, description, parent/root references where applicable, creator, assignee, status, priority, creation/update timestamps, and applicable due-date information. The UI labels the status and priority values using the selected interface language; the persisted values remain stable machine-readable values.
@@ -201,9 +207,11 @@ The local adapter emulates common access patterns using derived fields for top-l
 - `localStorage` stores the demo workspace and its built-in logical tables.
 - `sessionStorage` remembers the active demo identity for the tab.
 - Demo users within the same browser profile see the same local workspace.
-- Built-in item mutations create a compact change signal containing affected item, hierarchy, and previous/current assignee IDs. The adapter persists the changed tables first, then publishes the signal through `BroadcastChannel`; the browser `storage` event is the fallback transport.
-- Each active same-origin tab merges only the changed records from browser storage. If its signed-in user is the previous or new assignee, an open **Assigned Items** tab refreshes immediately. If an assignment request is already running, a follow-up refresh is queued; if the tab is elsewhere, its Assigned Items cache is marked stale and reloads when opened.
-- Different browser profiles, separate browsers, private sessions, and devices do not share state. The public demo does not broadcast between different visitors or across devices.
+- Built-in item mutations create a compact change signal containing affected item, hierarchy, and previous/current assignee IDs. The writer persists the merged snapshot before publishing the signal through `BroadcastChannel`; the browser `storage` event is the fallback transport.
+- Cross-tab writes use the Web Locks API when available to serialize the read/merge/write critical section. A tab merges only the item IDs and profile IDs it actually changed into the latest persisted snapshot; it never replaces the complete workspace with a stale in-memory snapshot. This prevents a write from one tab from silently erasing unrelated updates made by another tab.
+- Activity events are persisted as individual immutable event records. A tab does not rewrite or clear the complete Activity collection when another tab may be appending events.
+- Each active same-origin tab receives compact change notifications and independently refreshes affected views. If its signed-in user is the previous or new assignee, an open **Assigned Items** tab refreshes immediately. If an assignment request is already running, a follow-up refresh is queued; if the tab is elsewhere, its Assigned Items cache is marked stale and reloads when opened.
+- Different browser profiles, separate browsers, private sessions, and devices do not share state. The public demo does not broadcast between different visitors or across devices; cross-device shared work requires the AWS-backed deployment.
 - There is no synchronized multi-user database, server backup, or cross-device data transfer.
 
 The data is editable by the visitor through browser developer tools. Local persistence and cross-tab notifications are demo conveniences, not a security boundary or durable shared service.
