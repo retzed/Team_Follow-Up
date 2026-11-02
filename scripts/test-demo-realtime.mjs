@@ -39,6 +39,30 @@ vm.runInNewContext(helpers + '\nthis.createBuiltinRealtimeChange=createBuiltinRe
   assert.ok(!serialized.includes('description'));
 }
 
+
+{
+  const before = {
+    workItems: [
+      { itemId: 'project-1', type: 'project', ownerId: 'u1', name: 'Old project' },
+      { itemId: 'task-1', type: 'task', parentId: 'project-1', rootParentId: 'project-1', ownerId: 'u2', name: 'Task' },
+      { itemId: 'followup-1', type: 'followup', parentId: 'task-1', rootParentId: 'project-1', ownerId: 'u3', name: 'Follow-up' }
+    ],
+    archiveItems: []
+  };
+  const after = {
+    workItems: [
+      { ...before.workItems[0], name: 'Renamed project' },
+      ...before.workItems.slice(1)
+    ],
+    archiveItems: []
+  };
+  const change = context.createBuiltinRealtimeChange(before, after);
+  assert.deepEqual([...change.itemIds], ['project-1'], 'only the changed parent item is included in the item delta');
+  assert.deepEqual(new Set(change.assigneeIds), new Set(['u1', 'u2', 'u3']),
+    'a parent metadata change targets the parent owner and every descendant assignee');
+}
+
+
 {
   const before = { workItems: [], archiveItems: [] };
   const after = {
