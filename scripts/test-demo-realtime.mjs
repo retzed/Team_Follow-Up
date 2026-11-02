@@ -134,12 +134,85 @@ function createHandlerContext(userId, loading = false) {
   assert.equal(pendingRefresh.calls.assigned, 0, 'the in-flight request is not duplicated immediately');
 }
 
+
+{
+  const flushStart = html.indexOf(' function flushTableStorage(){');
+  const flushEnd = html.indexOf(' function scheduleTableStorageSave()', flushStart);
+  assert.ok(flushStart >= 0 && flushEnd > flushStart, 'the built-in storage writer must exist');
+  const flushSource = html.slice(flushStart, flushEnd);
+  const persisted = new Map([['team-follow-up-builtin-dynamodb-tables-v4', JSON.stringify({
+    workItems: [
+      { itemId: 'task-a', type: 'task', name: 'A from another tab', version: 2 },
+      { itemId: 'task-b', type: 'task', name: 'B old', version: 1 }
+    ],
+    archiveItems: [],
+    userProfiles: [{ userId: 'u1', displayName: 'Updated elsewhere' }]
+  })]]);
+  const storage = {
+    getItem: key => persisted.has(key) ? persisted.get(key) : null,
+    setItem: (key, value) => persisted.set(key, String(value)),
+    key: index => [...persisted.keys()][index] || null,
+    get length() { return persisted.size; },
+    removeItem: key => persisted.delete(key)
+  };
+  const writerMemory = {
+    workItems: [
+      { itemId: 'task-a', type: 'task', name: 'A stale in this tab', version: 1 },
+      { itemId: 'task-b', type: 'task', name: 'B from this tab', version: 2 }
+    ],
+    archiveItems: [],
+    userProfiles: [{ userId: 'u1', displayName: 'Stale profile' }],
+    activityEvents: []
+  };
+  const flushContext = {
+    localStorage: storage,
+    TABLES_KEY: 'team-follow-up-builtin-dynamodb-tables-v4',
+    memoryTables: writerMemory,
+    pendingRealtimeChange: { changeId: 'change-b', itemIds: ['task-b'] },
+    pendingBuiltinProfileIds: new Set(),
+    tableStorageSaveTimer: 0,
+    activityTableLoaded: false,
+    activityTableDirty: false,
+    clearTimeout() {},
+    clone: value => JSON.parse(JSON.stringify(value ?? null)),
+    publishBuiltinRealtimeChange: change => { flushContext.published = change; },
+    console: { warn() {} }
+  };
+  vm.runInNewContext(flushSource + '\nthis.flushTableStorage=flushTableStorage;', flushContext);
+  flushContext.flushTableStorage();
+  const merged = JSON.parse(storage.getItem('team-follow-up-builtin-dynamodb-tables-v4'));
+  const byId = new Map(merged.workItems.map(row => [row.itemId, row]));
+  assert.equal(byId.get('task-a').name, 'A from another tab', 'a stale writer cannot overwrite a different item saved by another tab');
+  assert.equal(byId.get('task-b').name, 'B from this tab', 'the current tab still persists its own changed item');
+  assert.equal(merged.userProfiles[0].displayName, 'Updated elsewhere', 'an unrelated profile snapshot is not overwritten by a stale tab');
+  assert.equal(flushContext.published.changeId, 'change-b', 'the compact notification is published after the merged snapshot is persisted');
+}
+
+{
+  const uniqueStart = html.indexOf('  const normalizeItemName=value=>');
+  const uniqueEnd = html.indexOf('  if(method===', uniqueStart);
+  assert.ok(uniqueStart >= 0 && uniqueEnd > uniqueStart, 'global item-name validation must exist in the built-in adapter');
+  const uniqueSource = html.slice(uniqueStart, uniqueEnd);
+  const uniqueContext = {
+    tables: {
+      workItems: [{ itemId: 'project-1', type: 'project', name: 'Network Upgrade' }],
+      archiveItems: [{ archiveId: 'followup-1', itemId: 'followup-1', type: 'followup', name: 'Prepare Release' }]
+    },
+    String, Error
+  };
+  vm.runInNewContext(uniqueSource + '\nthis.assertUniqueItemName=assertUniqueItemName;', uniqueContext);
+  assert.throws(() => uniqueContext.assertUniqueItemName(' network   upgrade ', 'task-2'), /unique across Projects/);
+  assert.throws(() => uniqueContext.assertUniqueItemName('PREPARE RELEASE', 'job-2'), /unique across Projects/);
+  assert.doesNotThrow(() => uniqueContext.assertUniqueItemName('Network Upgrade', 'project-1'), 'an item may retain its own name while editing');
+  assert.doesNotThrow(() => uniqueContext.assertUniqueItemName('A distinct name', 'task-2'));
+}
+
 assert.ok(html.includes("new BroadcastChannel('team-follow-up-demo-realtime-v1')"),
   'same-origin demo tabs use BroadcastChannel for prompt update delivery.');
 assert.ok(html.includes("event.key!==REALTIME_SIGNAL_KEY||!event.newValue"),
   'localStorage storage events provide a fallback for browsers without BroadcastChannel.');
-assert.ok(html.includes("if(persisted&&pendingRealtimeChange){const change=pendingRealtimeChange;pendingRealtimeChange=null;publishBuiltinRealtimeChange(change);}"),
-  'the demo broadcasts only after the changed tables have been persisted.');
+assert.ok(html.includes("if(persisted){") && html.includes("const changedIds=new Set(pendingRealtimeChange?.itemIds||[])"),
+  'the demo merges only locally changed item IDs into the latest persisted snapshot before publishing.');
 assert.ok(html.includes('function subscribeRealtimeChanges(listener)'),
   'the in-app view layer subscribes to normalized change hints.');
 assert.ok(html.includes("window.TeamFollowUpDataApi=Object.freeze({mode,tableNames:names,request,bootstrap,commitSnapshot,subscribeRealtimeChanges,"),
