@@ -65,6 +65,19 @@ const state = await api.bootstrap({ users, parents, children, activity: [] });
 assert.equal(state.parents.length, 2, 'bootstrap returns two top-level items');
 assert.equal(state.children.length, 0, 'bootstrap defers descendants until their parent is selected');
 assert.equal(state.activity.length, 0, 'bootstrap never fetches Activity history');
+await assert.rejects(
+  api.request('POST', '/items', {
+    id: 'duplicate-job-name', type: 'job', name: ' older   PROJECT ',
+    ownerId: 'u1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  }),
+  /unique across Projects/,
+  'a parent/child name collision is rejected regardless of item type, case, or whitespace'
+);
+await assert.rejects(
+  api.request('PATCH', '/items/p-new', { name: 'OLDER PROJECT' }),
+  /unique across Projects/,
+  'renaming an item to another active item name is rejected'
+);
 assert.ok(!(window.__TEAM_FOLLOW_UP_API_LOG || []).some(x => /\/activity/.test(x.path)), 'startup does not request Activity history');
 assert.ok(!(window.__TEAM_FOLLOW_UP_API_LOG || []).some(x => /rootParentId=/.test(x.path)), 'startup does not fetch every root hierarchy');
 const selectedRootItems = await api.queryRootItems('p-old');
@@ -100,6 +113,14 @@ assert.equal(history.events.length, 1, 'item and creation event are saved in one
 assert.equal(history.events[0].userId, 'u1');
 const deleteEvent = { id: 'evt-transaction-delete', itemId: 'p-test', itemName: 'Test project', itemType: 'project', rootParentId: 'p-test', userId: 'u2', action: 'Deleted project: Test project', kind: 'delete', at: new Date(Date.now() + 1000).toISOString() };
 await api.request('DELETE', '/items/p-test', { activityEvents: [deleteEvent] });
+await assert.rejects(
+  api.request('POST', '/items', {
+    id: 'duplicate-archived-name', type: 'job', name: 'Test project',
+    ownerId: 'u2', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  }),
+  /unique across Projects/,
+  'archiving an item does not release its global name'
+);
 const noActiveItem = await api.queryTopLevel({ query: 'Test project' });
 assert.equal(noActiveItem.count, 0, 'soft-deleted records are excluded from active queries');
 history = await api.queryActivity('p-test', 'item');
