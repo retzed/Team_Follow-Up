@@ -1461,7 +1461,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
   if(event.key!==REALTIME_SIGNAL_KEY||!event.newValue)return;
   try{receiveBuiltinRealtimeChange(JSON.parse(event.newValue));}catch(error){}
  });
- function flushTableStorage(){
+ function flushTableStorageNow(){
   if(tableStorageSaveTimer){clearTimeout(tableStorageSaveTimer);tableStorageSaveTimer=0;}
   let persisted=false;
   try{
@@ -1507,6 +1507,16 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
    pendingBuiltinProfileIds.clear();
    if(pendingRealtimeChange){const change=pendingRealtimeChange;pendingRealtimeChange=null;publishBuiltinRealtimeChange(change);}
   }
+ }
+ function flushTableStorage(){
+  // Web Locks serialize the read/merge/write sequence across same-origin tabs.
+  // The IDB-free fallback still performs a changed-ID merge rather than a stale
+  // whole-table replacement on browsers without the Web Locks API.
+  const locks=window.navigator?.locks;
+  if(locks&&typeof locks.request==='function'){
+   return locks.request('team-follow-up-demo-storage-write-v1',()=>flushTableStorageNow());
+  }
+  return flushTableStorageNow();
  }
  function scheduleTableStorageSave(){if(typeof setTimeout!=='function'){flushTableStorage();return;}if(tableStorageSaveTimer)clearTimeout(tableStorageSaveTimer);tableStorageSaveTimer=setTimeout(()=>{tableStorageSaveTimer=0;flushTableStorage();},0);}
  if(typeof window.addEventListener==='function')window.addEventListener('pagehide',flushTableStorage,{capture:true});
