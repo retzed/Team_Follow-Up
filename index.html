@@ -1490,7 +1490,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
   });
   window.addEventListener('focus',reconcileBuiltinTablesFromDisk);
  }
- if(typeof document.addEventListener==='function')document.addEventListener('visibilitychange',()=>{
+ if(typeof document!=='undefined'&&typeof document.addEventListener==='function')document.addEventListener('visibilitychange',()=>{
   if(!document.hidden){pollBuiltinRealtimeSignal();reconcileBuiltinTablesFromDisk();}
  });
  if(typeof setInterval==='function')setInterval(pollBuiltinRealtimeSignal,5000);
