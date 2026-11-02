@@ -1372,6 +1372,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
  function createBuiltinRealtimeChange(previous,next){
   if(!previous||!next)return null;
   const oldMap=builtinItemMap(previous),newMap=builtinItemMap(next);
+  const allRows=[...oldMap.values(),...newMap.values()];
   const ids=new Set([...oldMap.keys(),...newMap.keys()]);
   const itemIds=[],rootParentIds=new Set(),topLevelIds=new Set(),parentIds=new Set(),assigneeIds=new Set();
   let changeKind='updated',deleted=false;
@@ -1386,6 +1387,16 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
     if(type==='project'||type==='job')topLevelIds.add(rowId);
     const parentId=String(row.parentId||row.archiveParentId||'');if(parentId)parentIds.add(parentId);
     const ownerId=String(row.ownerId||row.assignedTo||'');if(ownerId)assigneeIds.add(ownerId);
+    if(type==='project'||type==='job'||type==='task'){
+     for(const descendant of allRows){
+      const descendantId=String(descendant.itemId||descendant.archiveId||descendant.id||'');
+      if(!descendantId||descendantId===rowId)continue;
+      const belongs=type==='task'
+       ?String(descendant.parentId||descendant.archiveParentId||'')===rowId
+       :String(descendant.rootParentId||descendant.archiveRootId||builtinItemRoot(descendant)||'')===rowId;
+      if(belongs){const descendantOwner=String(descendant.ownerId||descendant.assignedTo||'');if(descendantOwner)assigneeIds.add(descendantOwner);}
+     }
+    }
    }
    if(!oldRow&&newRow)changeKind='created';
    else if(oldRow&&!newRow){changeKind='deleted';deleted=true;}
