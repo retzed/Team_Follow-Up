@@ -247,8 +247,8 @@ function createHandlerContext(userId, loading = false) {
   };
   state.realtimeListeners.add(change => state.calls.push(change));
   vm.runInNewContext(
-    helpers + '\n' + s.slice(mergeStart, mergeEnd) + '\n' +
-    s.slice(reconcileStart, reconcileEnd) +
+    helpers + '\n' + html.slice(mergeStart, mergeEnd) + '\n' +
+    html.slice(reconcileStart, reconcileEnd) +
     '\nthis.reconcileBuiltinTablesFromDisk=reconcileBuiltinTablesFromDisk;',
     state
   );
