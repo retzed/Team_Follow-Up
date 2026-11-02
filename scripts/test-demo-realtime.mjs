@@ -207,10 +207,64 @@ function createHandlerContext(userId, loading = false) {
   assert.doesNotThrow(() => uniqueContext.assertUniqueItemName('A distinct name', 'task-2'));
 }
 
+
+{
+  const reconcileStart = html.indexOf(' function reconcileBuiltinTablesFromDisk(){');
+  const reconcileEnd = html.indexOf(' function publishBuiltinRealtimeChange(change){', reconcileStart);
+  const mergeStart = html.indexOf(' function mergeBuiltinTablesFromDisk(change){');
+  const mergeEnd = html.indexOf(' function receiveBuiltinRealtimeChange(change){', mergeStart);
+  assert.ok(reconcileStart >= 0 && reconcileEnd > reconcileStart && mergeStart >= 0 && mergeEnd > mergeStart,
+    'the demo must provide a durable cross-tab reconciliation path');
+  const stored = {
+    workItems: [
+      { itemId: 'task-a', type: 'task', parentId: 'project-1', rootParentId: 'project-1', name: 'A latest', ownerId: 'u1', version: 2 },
+      { itemId: 'task-b', type: 'task', parentId: 'project-1', rootParentId: 'project-1', name: 'B latest', ownerId: 'u2', version: 2 }
+    ],
+    archiveItems: [], userProfiles: []
+  };
+  const state = {
+    memoryTables: {
+      workItems: [
+        { itemId: 'task-a', type: 'task', parentId: 'project-1', rootParentId: 'project-1', name: 'A stale', ownerId: 'u1', version: 1 },
+        { itemId: 'task-b', type: 'task', parentId: 'project-1', rootParentId: 'project-1', name: 'B stale', ownerId: 'u2', version: 1 }
+      ],
+      archiveItems: [], userProfiles: []
+    },
+    localStorage: { getItem: () => JSON.stringify(stored) },
+    TABLES_KEY: 'tables',
+    pendingRealtimeChange: null,
+    pendingBuiltinProfileIds: new Set(),
+    tableStorageSaveTimer: 0,
+    activityTableLoaded: false,
+    realtimeListeners: new Set(),
+    seenRealtimeChangeIds: new Set(),
+    calls: [],
+    builtinItemMap: context.builtinItemMap,
+    builtinItemRoot: context.builtinItemRoot,
+    createBuiltinRealtimeChange: context.createBuiltinRealtimeChange,
+    clone: value => JSON.parse(JSON.stringify(value ?? null)),
+    console: { warn() {} }
+  };
+  state.realtimeListeners.add(change => state.calls.push(change));
+  vm.runInNewContext(
+    helpers + '\n' + s.slice(mergeStart, mergeEnd) + '\n' +
+    s.slice(reconcileStart, reconcileEnd) +
+    '\nthis.reconcileBuiltinTablesFromDisk=reconcileBuiltinTablesFromDisk;',
+    state
+  );
+  state.reconcileBuiltinTablesFromDisk();
+  assert.deepEqual(state.memoryTables.workItems.map(row => row.name), ['A latest', 'B latest'],
+    'reconciliation merges every missed item change, not only the most recent signal payload');
+  assert.equal(state.calls.length, 1);
+  assert.deepEqual([...state.calls[0].itemIds].sort(), ['task-a', 'task-b']);
+}
+
 assert.ok(html.includes("new BroadcastChannel('team-follow-up-demo-realtime-v1')"),
   'same-origin demo tabs use BroadcastChannel for prompt update delivery.');
 assert.ok(html.includes("event.key!==REALTIME_SIGNAL_KEY||!event.newValue"),
   'localStorage storage events provide a fallback for browsers without BroadcastChannel.');
+assert.ok(html.includes('setInterval(pollBuiltinRealtimeSignal,5000)') && html.includes('function reconcileBuiltinTablesFromDisk()'),
+  'active demo tabs periodically reconcile the full persisted delta so missed or coalesced notifications cannot leave another tab stale.');
 assert.ok(html.includes("if(persisted){") && html.includes("const changedIds=new Set(pendingRealtimeChange?.itemIds||[])"),
   'the demo merges only locally changed item IDs into the latest persisted snapshot before publishing.');
 assert.ok(html.includes('function subscribeRealtimeChanges(listener)'),
