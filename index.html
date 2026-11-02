@@ -1324,6 +1324,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
  const REALTIME_SIGNAL_KEY='team-follow-up-demo-realtime-signal-v1';
  const realtimeListeners=new Set(),seenRealtimeChangeIds=new Set();
  let realtimeChannel=null,pendingRealtimeChange=null;
+ let pendingBuiltinProfileIds=new Set();
  let memoryTables=null;let tableStorageSaveTimer=0;
  const clone=value=>JSON.parse(JSON.stringify(value??null));
  const now=()=>new Date().toISOString();
@@ -1465,16 +1466,47 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
   let persisted=false;
   try{
    if(!memoryTables)return;
-   const primary=clone(memoryTables);delete primary.activityEvents;
+   // Never write a stale full-table snapshot over another tab's newer rows.
+   // Merge only IDs changed by this tab into the latest persisted snapshot.
+   let latest=null;
+   try{latest=JSON.parse(localStorage.getItem(TABLES_KEY)||'null');}catch(error){}
+   const primary=latest&&Array.isArray(latest.workItems)?latest:clone(memoryTables);
+   if(!Array.isArray(primary.archiveItems))primary.archiveItems=[];
+   const changedIds=new Set(pendingRealtimeChange?.itemIds||[]);
+   if(changedIds.size){
+    const activeById=new Map((memoryTables.workItems||[]).map(row=>[String(row.itemId||row.id||''),row]));
+    const archivedById=new Map((memoryTables.archiveItems||[]).map(row=>[String(row.archiveId||row.itemId||row.id||''),row]));
+    primary.workItems=(primary.workItems||[]).filter(row=>!changedIds.has(String(row.itemId||row.id||'')));
+    primary.archiveItems=(primary.archiveItems||[]).filter(row=>!changedIds.has(String(row.archiveId||row.itemId||row.id||'')));
+    for(const id of changedIds){
+     if(activeById.has(id))primary.workItems.push(clone(activeById.get(id)));
+     if(archivedById.has(id))primary.archiveItems.push(clone(archivedById.get(id)));
+    }
+   }
+   if(pendingBuiltinProfileIds.size){
+    const profileIds=pendingBuiltinProfileIds;
+    const localById=new Map((memoryTables.userProfiles||[]).map(row=>[String(row.userId||row.id||''),row]));
+    primary.userProfiles=(primary.userProfiles||[]).filter(row=>!profileIds.has(String(row.userId||row.id||'')));
+    for(const id of profileIds)if(localById.has(id))primary.userProfiles.push(clone(localById.get(id)));
+   }
+   delete primary.activityEvents;
    localStorage.setItem(TABLES_KEY,JSON.stringify(primary));
+   // Activity events are persisted individually under immutable event keys.
+   // Rewriting/deleting the complete event collection here allowed one tab to
+   // erase another tab's concurrently appended history.
    if(activityTableLoaded&&activityTableDirty){
-    localStorage.setItem(ACTIVITY_TABLE_KEY,JSON.stringify(memoryTables.activityEvents||[]));
-    for(let i=localStorage.length-1;i>=0;i--){const key=localStorage.key(i);if(key&&key.startsWith(ACTIVITY_EVENT_PREFIX))localStorage.removeItem(key);}
+    for(const event of memoryTables.activityEvents||[])persistActivityEvent(event);
     activityTableDirty=false;
    }
+   memoryTables.workItems=clone(primary.workItems||[]);
+   memoryTables.archiveItems=clone(primary.archiveItems||[]);
+   memoryTables.userProfiles=clone(primary.userProfiles||[]);
    persisted=true;
   }catch(e){console.warn('Built-in tables cannot persist in browser storage; this session will use memory storage.',e);}
-  if(persisted&&pendingRealtimeChange){const change=pendingRealtimeChange;pendingRealtimeChange=null;publishBuiltinRealtimeChange(change);}
+  if(persisted){
+   pendingBuiltinProfileIds.clear();
+   if(pendingRealtimeChange){const change=pendingRealtimeChange;pendingRealtimeChange=null;publishBuiltinRealtimeChange(change);}
+  }
  }
  function scheduleTableStorageSave(){if(typeof setTimeout!=='function'){flushTableStorage();return;}if(tableStorageSaveTimer)clearTimeout(tableStorageSaveTimer);tableStorageSaveTimer=setTimeout(()=>{tableStorageSaveTimer=0;flushTableStorage();},0);}
  if(typeof window.addEventListener==='function')window.addEventListener('pagehide',flushTableStorage,{capture:true});
@@ -1628,7 +1660,14 @@ function readTables(includeActivity=false){
    try{memoryTables.activityEvents=persistInitialActivityBatch(seedEvents);localStorage.removeItem(ACTIVITY_TABLE_KEY);}
    catch(e){memoryTables.activityEvents=seedEvents;activityTableLoaded=true;activityTableDirty=true;}
   }else if(activityTableLoaded)activityTableDirty=true;
-  if(previous)mergePendingBuiltinChange(createBuiltinRealtimeChange(previous,t));
+  if(previous){
+   mergePendingBuiltinChange(createBuiltinRealtimeChange(previous,t));
+   const before=new Map((previous.userProfiles||[]).map(row=>[String(row.userId||row.id||''),row]));
+   const after=new Map((t.userProfiles||[]).map(row=>[String(row.userId||row.id||''),row]));
+   for(const id of new Set([...before.keys(),...after.keys()])){
+    if(JSON.stringify(before.get(id)??null)!==JSON.stringify(after.get(id)??null))pendingBuiltinProfileIds.add(id);
+   }
+  }
   scheduleTableStorageSave();
  }
  function ensureIndexFields(item){
@@ -1717,6 +1756,16 @@ function readTables(includeActivity=false){
   const respond=value=>Promise.resolve(clone(value));
   const persist=()=>writeTables(tables);
   const allActive=()=>tables.workItems.filter(x=>!x.deletedAt);
+  const normalizeItemName=value=>String(value??'').normalize('NFKC').trim().replace(/\\s+/g,' ').toLowerCase();
+  const assertUniqueItemName=(name,exceptId='')=>{
+   const normalized=normalizeItemName(name);
+   if(!normalized)throw new Error('Item name is required.');
+   const duplicate=[...(tables.workItems||[]),...(tables.archiveItems||[])].find(row=>{
+    const id=String(row.itemId||row.archiveId||row.id||'');
+    return id!==String(exceptId||'')&&normalizeItemName(row.name)===normalized;
+   });
+   if(duplicate)throw new Error('An item with this name already exists. Item names must be unique across Projects, Jobs, Tasks, and Follow-ups.');
+  };
   if(method==='GET'&&clean==='/bootstrap')return respond({items:allActive().filter(x=>x.type==='project'||x.type==='job').map(toAppItem),users:tables.userProfiles.filter(u=>u.enabled!==false).map(toAppUser),tableNames:names,mode:'builtin'});
   if(method==='GET'&&clean==='/users')return respond(tables.userProfiles.filter(u=>u.enabled!==false).map(toAppUser));
   if(method==='GET'&&clean==='/users/me'){const meId=String(window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId||'u1');const me=tables.userProfiles.find(u=>String(u.userId)===meId&&u.enabled!==false);if(!me)throw new Error('Signed-in user profile not found.');return respond({user:toAppUser(me)});}
@@ -1778,12 +1827,12 @@ function readTables(includeActivity=false){
   }
   if(method==='POST'&&clean==='/items'){
    const payload=clone(body)||{};const relatedEvents=Array.isArray(payload.activityEvents)?payload.activityEvents:[];delete payload.activityEvents;
-   const x=ensureIndexFields(payload);if(!x.itemId)throw new Error('itemId is required.');const existing=tables.workItems.findIndex(i=>i.itemId===x.itemId);if(existing>=0)tables.workItems[existing]=x;else tables.workItems.push(x);
+   const x=ensureIndexFields(payload);if(!x.itemId)throw new Error('itemId is required.');assertUniqueItemName(x.name,x.itemId);const existing=tables.workItems.findIndex(i=>i.itemId===x.itemId);if(existing>=0)tables.workItems[existing]=x;else tables.workItems.push(x);
    for(const raw of relatedEvents)storeActivityEvent(tables,raw);
    persist();return respond(toAppItem(x));
   }
   m=clean.match(/^\/items\/([^/]+)$/);
-  if(m&&method==='PATCH') {const id=decodeURIComponent(m[1]);const i=tables.workItems.findIndex(x=>x.itemId===id);if(i<0)throw new Error('Item not found.');const payload=clone(body)||{};const relatedEvents=Array.isArray(payload.activityEvents)?payload.activityEvents:[];delete payload.activityEvents;tables.workItems[i]=ensureIndexFields({...tables.workItems[i],...payload,itemId:id});for(const raw of relatedEvents)storeActivityEvent(tables,raw);persist();return respond(toAppItem(tables.workItems[i]));}
+  if(m&&method==='PATCH') {const id=decodeURIComponent(m[1]);const i=tables.workItems.findIndex(x=>x.itemId===id);if(i<0)throw new Error('Item not found.');const payload=clone(body)||{};const relatedEvents=Array.isArray(payload.activityEvents)?payload.activityEvents:[];delete payload.activityEvents;const updated=ensureIndexFields({...tables.workItems[i],...payload,itemId:id});assertUniqueItemName(updated.name,id);tables.workItems[i]=updated;for(const raw of relatedEvents)storeActivityEvent(tables,raw);persist();return respond(toAppItem(tables.workItems[i]));}
   if(method==='GET'&&clean==='/archive'){
    let rows=(tables.archiveItems||[]).slice();const queryText=(q.get('q')||'').toLocaleLowerCase();const type=q.get('type')||'all';const root=q.get('rootParentId');
    if(type!=='all')rows=rows.filter(x=>x.type===type);if(root)rows=rows.filter(x=>String(x.archiveRootId||x.rootParentId||x.itemId)===root);
@@ -1801,7 +1850,7 @@ function readTables(includeActivity=false){
    const selectionRoots=ordered.filter(row=>!selectedMap.has(String(row.parentId||'')));
    const isInSelectedSubtree=(row,rootId)=>{let cursor=row,seen=new Set();while(cursor&&!seen.has(String(cursor.itemId||cursor.archiveId))){const id=String(cursor.itemId||cursor.archiveId);if(id===String(rootId))return true;seen.add(id);cursor=selectedMap.get(String(cursor.parentId||''));}return false;};
    const summaryForRoot=rootRaw=>{const rootId=String(rootRaw.itemId||rootRaw.archiveId);const group=ordered.filter(row=>isInSelectedSubtree(row,rootId));const item=group.find(row=>String(row.itemId||row.archiveId)===rootId)||rootRaw;const id=String(item.itemId||item.archiveId);const rootParentId=String(item.rootParentId||(['project','job'].includes(item.type)?id:''));const rootRecord=selectedMap.get(rootParentId)||activeById.get(rootParentId)||archiveById.get(rootParentId)||item;const rootName=String(rootId===id?item.name:(rootRecord?.name||item.archiveRootName||''));const rootType=String(rootRecord?.type||item.archiveRootType||(['project','job'].includes(item.type)?item.type:''));const descCount=Math.max(0,group.length-1);const action=`Restored ${item.type}: ${item.name}`;return storeActivityEvent(tables,{id:`evt_restore_${id}_${Date.now()}_${Math.random().toString(36).slice(2,9)}`,itemId:id,itemName:item.name,itemType:item.type,rootParentId:rootParentId||id,rootParentName:rootName,rootParentType:rootType,rootTypeSnapshot:rootType,parentId:item.parentId||null,userId:actor||item.updatedByUserId||item.updatedBy||item.createdByUserId||item.createdBy||'',action,summary:action,kind:'restore',at:restoredAt,ancestorIds:item.parentId?[String(item.parentId),...(rootParentId&&rootParentId!==item.parentId?[rootParentId]:[])]:[],bulkOperation:descCount?'restore-subtree':'restore-item',affectedCount:group.length,affectedDescendantCount:descCount});};
-   for(const raw of ordered){const id=String(raw.itemId||raw.archiveId);const item=clone(raw);for(const k of ['archiveId','archivePK','archiveSort','archiveRootPK','archiveRootSort','archiveRootId','archiveRootName','archiveRootType','archiveParentId','archiveParentName','archivedAt','archivedByUserId','deletedAt'])delete item[k];item.updatedAt=restoredAt;if(actor){if('createdByUserId' in item||'updatedByUserId' in item)item.updatedByUserId=actor;else item.updatedBy=actor;}else if(item.updatedBy)item.updatedByUserId=item.updatedBy;item.version=(Number(item.version)||0)+1;const indexed=ensureIndexFields(item);tables.workItems.push(indexed);restored.push(toAppItem(indexed));activeMap.set(id,indexed);activeById.set(id,indexed);}
+   for(const raw of ordered){const id=String(raw.itemId||raw.archiveId);const item=clone(raw);assertUniqueItemName(item.name,id);for(const k of ['archiveId','archivePK','archiveSort','archiveRootPK','archiveRootSort','archiveRootId','archiveRootName','archiveRootType','archiveParentId','archiveParentName','archivedAt','archivedByUserId','deletedAt'])delete item[k];item.updatedAt=restoredAt;if(actor){if('createdByUserId' in item||'updatedByUserId' in item)item.updatedByUserId=actor;else item.updatedBy=actor;}else if(item.updatedBy)item.updatedByUserId=item.updatedBy;item.version=(Number(item.version)||0)+1;const indexed=ensureIndexFields(item);tables.workItems.push(indexed);restored.push(toAppItem(indexed));activeMap.set(id,indexed);activeById.set(id,indexed);}
    tables.archiveItems=tables.archiveItems.filter(x=>!restoredArchiveIds.has(String(x.archiveId||x.itemId)));
    for(const rootRaw of selectionRoots)savedEvents.push(toAppEvent(summaryForRoot(rootRaw)));
    persist();return respond({ok:true,restoredIds:restored.map(x=>x.id),restoredItems:restored,activityEvents:savedEvents});
