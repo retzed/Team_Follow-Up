@@ -1500,7 +1500,8 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
    }
    memoryTables.workItems=clone(primary.workItems||[]);
    memoryTables.archiveItems=clone(primary.archiveItems||[]);
-   memoryTables.userProfiles=clone(primary.userProfiles||[]);
+   // Keep this tab's in-memory profile objects intact; its own mutation is already
+   // present there, while the merged profile snapshot is persisted above.
    persisted=true;
   }catch(e){console.warn('Built-in tables cannot persist in browser storage; this session will use memory storage.',e);}
   if(persisted){
