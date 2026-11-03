@@ -161,7 +161,8 @@ if (html.includes('function initializeLocalAuth(){')) {
   const tabOneSession = createMemoryStorage();
   const tabOneHistory = {
     state: null,
-    replaceState(nextState) { this.state = nextState; }
+    lastUrl: '',
+    replaceState(nextState, _title, url) { this.state = nextState; if (url) this.lastUrl = url; }
   };
   const tabOneWindow = { name: '', history: tabOneHistory, location: { href: 'https://retzed.github.io/Team_Follow-Up/' }, crypto: { randomUUID: () => 'tab-one-identity' } };
   const baseTabContext = {
@@ -169,11 +170,14 @@ if (html.includes('function initializeLocalAuth(){')) {
     LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
     LOCAL_TAB_NAME_MARKER: '|__TEAM_FOLLOW_UP_LOCAL_TAB_V1__:',
     LOCAL_USER_NAME_MARKER: '|__TEAM_FOLLOW_UP_LOCAL_USER_V1__:',
+    LOCAL_URL_TAB_PARAM: '__team_follow_up_tab',
     window: tabOneWindow, sessionStorage: tabOneSession, localStorage: sharedDemoStorage,
     document: { title: 'Team Follow-Up' }, String, Date, Math, console
   };
   vm.runInNewContext(localAuthSource + '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;this.key=localSessionTabStorageKey;', baseTabContext);
   baseTabContext.persist('u2');
+  assert.ok(tabOneHistory.lastUrl.includes('#__team_follow_up_tab='), 'The current URL carries an opaque per-tab marker so the localStorage backup can be found after browser tab metadata is lost.');
+  tabOneWindow.location.href = tabOneHistory.lastUrl;
   const tabOneKey = baseTabContext.key();
   const tabOneHistoryId = tabOneHistory.state?.__TEAM_FOLLOW_UP_LOCAL_TAB_ID_V1__;
   assert.equal(tabOneSession.getItem('team-follow-up-local-auth-v1'), 'u2', 'The demo identity remains available in its browser tab session.');
@@ -209,6 +213,21 @@ if (html.includes('function initializeLocalAuth(){')) {
   vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', nameOnlyContext);
   assert.equal(nameOnlyContext.restore(), 'u2', 'The tab-name identity restores the demo user when storage and history state are unavailable.');
 
+  // If the browser reconstructs a tab without sessionStorage, history.state or
+  // window.name, the unchanged URL marker still locates the per-tab localStorage row.
+  const urlOnlyWindow = {
+    name: '',
+    history: { state: null, replaceState(nextState, _title, url) { this.state = nextState; if (url) this.lastUrl = url; } },
+    location: { href: tabOneWindow.location.href },
+    crypto: { randomUUID: () => 'unused-url-fallback' }
+  };
+  const urlOnlyContext = {
+    ...baseTabContext, window: urlOnlyWindow,
+    sessionStorage: createMemoryStorage(), localStorage: sharedDemoStorage
+  };
+  vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', urlOnlyContext);
+  assert.equal(urlOnlyContext.restore(), 'u2', 'The URL tab marker restores the same user when sessionStorage, history.state and window.name have all been lost.');
+
   // Simulate a full reload: sessionStorage is reconstructed from its persisted values,
   // while window.name is deliberately blanked to verify history.state is an independent key source.
   const reloadedTabSession = createMemoryStorage();
@@ -243,6 +262,7 @@ if (html.includes('function initializeLocalAuth(){')) {
   assert.equal(reloadedTabHistory.state?.__TEAM_FOLLOW_UP_LOCAL_TAB_ID_V1__, undefined, 'Explicit sign-out clears the current history-entry tab marker.');
   assert.equal(reloadedTabHistory.state?.__TEAM_FOLLOW_UP_LOCAL_USER_ID_V1__, undefined, 'Explicit sign-out clears the current history-entry user marker.');
   assert.ok(!reloadedTabWindow.name.includes('__TEAM_FOLLOW_UP_LOCAL_USER_V1__'), 'Explicit sign-out clears the tab-name user marker.');
+  assert.ok(!String(reloadedTabHistory.lastUrl || '').includes('__team_follow_up_tab='), 'Explicit sign-out removes the URL tab marker as well as the stored identity.');
   assert.equal(sharedDemoStorage.getItem(tabTwoContext.key()), 'u3', 'Signing out in one tab leaves the other tab session intact.');
 }
 console.log('Session-refresh tests passed: persistent Cognito storage, transient auth recovery, user-specific page/tab/filter/scroll restoration, and no hydration route reset.');
