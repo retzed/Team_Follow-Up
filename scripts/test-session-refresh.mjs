@@ -194,7 +194,7 @@ if (html.includes('function initializeLocalAuth(){')) {
     ...baseTabContext, window: stateOnlyWindow, sessionStorage: emptySessionAfterReload,
     localStorage: emptyStorageAfterReload
   };
-  vm.runInNewContext(localAuthSource + '\\nthis.restore=restoreLocalSessionUser;', stateOnlyContext);
+  vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', stateOnlyContext);
   assert.equal(stateOnlyContext.restore(), 'u2', 'A history-entry identity restores the demo user when both browser storage stores are empty.');
   assert.equal(emptySessionAfterReload.getItem('team-follow-up-local-auth-v1'), 'u2', 'History restoration repopulates sessionStorage.');
 
@@ -205,7 +205,7 @@ if (html.includes('function initializeLocalAuth(){')) {
     window: { name: tabOneWindow.name, history: { state: null, replaceState(nextState) { this.state = nextState; } }, location: { href: 'https://retzed.github.io/Team_Follow-Up/' }, crypto: { randomUUID: () => 'unused-name-fallback' } },
     sessionStorage: createMemoryStorage(), localStorage: createMemoryStorage()
   };
-  vm.runInNewContext(localAuthSource + '\\nthis.restore=restoreLocalSessionUser;', nameOnlyContext);
+  vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', nameOnlyContext);
   assert.equal(nameOnlyContext.restore(), 'u2', 'The tab-name identity restores the demo user when storage and history state are unavailable.');
 
   // Simulate a full reload: sessionStorage is reconstructed from its persisted values,
