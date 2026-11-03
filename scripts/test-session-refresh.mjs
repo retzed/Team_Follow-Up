@@ -75,7 +75,7 @@ vm.runInNewContext(helperSource + '\nthis.persistWorkspaceViewState=persistWorks
 firstContext.persistWorkspaceViewState();
 assert.ok(storage.getItem('team-follow-up-view-state-v1:u2'), 'The page state is stored in the current browser tab session.');
 assert.ok(persistentStorage.getItem('team-follow-up-view-state-v1:u2'), 'A persistent per-user backup is stored as each view change is saved.');
-assert.ok(s.includes("for(const eventName of ['click','change','input'])window.addEventListener(eventName,scheduleWorkspaceViewStateSave,true);"), 'Normal navigation, filtering and search interactions schedule a view-state save before browser unload.');
+assert.ok(html.includes("for(const eventName of ['click','change','input'])window.addEventListener(eventName,scheduleWorkspaceViewStateSave,true);"), 'Normal navigation, filtering and search interactions schedule a view-state save before browser unload.');
 assert.equal(typeof listeners.pagehide, 'function', 'A pagehide save is registered for browser refresh/unload.');
 
 const refreshedUi = {
@@ -126,14 +126,13 @@ assert.equal(storage.getItem('team-follow-up-view-state-v1:u2'), null, 'Explicit
 assert.equal(persistentStorage.getItem('team-follow-up-view-state-v1:u2'), null, 'Explicit sign-out also clears the persistent view-state backup.');
 
 if (html.includes('function initializeLocalAuth(){')) {
-  assert.match(html, /sessionStorage\\.getItem\\(LOCAL_SESSION_KEY\\)\\|\\|localStorage\\.getItem\\(LOCAL_SESSION_KEY\\)/,
+  assert.match(html, /sessionStorage\.getItem\(LOCAL_SESSION_KEY\)/,
     'The local demo restores its tab-scoped demo identity after a page refresh.');
-  assert.match(html, /sessionStorage\\.setItem\\(LOCAL_SESSION_KEY,teamUserId\\);localStorage\\.setItem\\(LOCAL_SESSION_KEY,teamUserId\\)/,
+  assert.match(html, /sessionStorage\.setItem\(LOCAL_SESSION_KEY,teamUserId\)/,
     'The local demo persists the active demo identity in the tab session.');
-  assert.match(html, /sessionStorage\\.removeItem\\(LOCAL_SESSION_KEY\\);localStorage\\.removeItem\\(LOCAL_SESSION_KEY\\)/,
+  assert.match(html, /sessionStorage\.removeItem\(LOCAL_SESSION_KEY\)/,
     'Explicit demo sign-out removes the tab-scoped demo identity.');
   assert.doesNotMatch(html, /localStorage\.(?:getItem|setItem|removeItem)\(LOCAL_SESSION_KEY\)/,
     'Demo users in separate tabs retain independent test identities.');
 }
-
 console.log('Session-refresh tests passed: persistent Cognito storage, transient auth recovery, user-specific page/tab/filter/scroll restoration, and no hydration route reset.');
