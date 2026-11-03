@@ -294,7 +294,7 @@ assert.ok(html.includes("if(persisted){") && html.includes("const changedIds=new
 assert.ok(html.includes('function subscribeRealtimeChanges(listener)'),
   'the in-app view layer subscribes to normalized change hints.');
 assert.ok(html.includes("window.TeamFollowUpDataApi=Object.freeze({mode,tableNames:names,request,bootstrap,commitSnapshot,subscribeRealtimeChanges,"),
-  'the built-in data adapter exports the change subscription without altering the API item/write contract.');
+assert.ok(html.includes("window.TeamFollowUpDataApi=Object.freeze({mode,tableNames:names,request,bootstrap,commitSnapshot,commitItemMutation,subscribeRealtimeChanges,"),
 assert.ok(html.includes("window.__TEAM_FOLLOW_UP_DEMO_REALTIME_UNSUBSCRIBE=window.TeamFollowUpDataApi?.mode==='api'?null:window.TeamFollowUpDataApi?.subscribeRealtimeChanges?.(change=>{void handleDemoRealtimeChange(change);});"),
   'the demo workspace subscribes to cross-tab change hints only in built-in mode.');
 assert.ok(html.includes('if(demoAssignedRefreshPending&&ui.page===\'account\'&&ui.accountTab===\'assigned\')'),
