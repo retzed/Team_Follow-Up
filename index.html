@@ -1917,7 +1917,7 @@ function readTables(includeActivity=false){
    persist();return respond({ok:true,restoredIds:restored.map(x=>x.id),restoredItems:restored,activityEvents:savedEvents});
   }
   if(m&&method==='DELETE'){const id=decodeURIComponent(m[1]);const i=tables.workItems.findIndex(x=>x.itemId===id&&!x.deletedAt);if(i<0)throw new Error('Item not found.');const payload=clone(body)||{};const relatedEvents=Array.isArray(payload.activityEvents)?payload.activityEvents:[];const deletedAt=now();const current=tables.workItems[i];const actor=String(relatedEvents[0]?.userId||current.updatedByUserId||current.updatedBy||'');const currentRoot=['project','job'].includes(current.type)?id:String(current.rootParentId||current.parentId||id);const isLeafFollowup=current.type==='followup';const scoped=isLeafFollowup?[current]:allActive().filter(row=>String(row.rootPK||'')===`ROOT#${currentRoot}`||String(row.itemId)===id);const byParent=new Map();for(const row of scoped){const pid=String(row.parentId||'');if(pid){if(!byParent.has(pid))byParent.set(pid,[]);byParent.get(pid).push(row);}}const collected=[],seen=new Set(),queue=[{row:current,depth:0}];let queuePos=0;while(queuePos<queue.length){const next=queue[queuePos++];const childId=String(next.row.itemId);if(seen.has(childId))continue;seen.add(childId);collected.push(next);for(const child of byParent.get(childId)||[])queue.push({row:child,depth:next.depth+1});}collected.sort((a,b)=>b.depth-a.depth||String(a.row.itemId).localeCompare(String(b.row.itemId)));const needed=new Set();for(const entry of collected){const row=entry.row;needed.add(String(row.itemId));const rootKey=['project','job'].includes(row.type)?String(row.itemId):String(row.rootParentId||row.parentId||'');const parentKey=String(row.parentId||'');if(rootKey)needed.add(rootKey);if(parentKey)needed.add(parentKey);}const archiveLookupIndex={workById:new Map(),archiveById:new Map()};for(const row of tables.workItems||[]){const key=String(row.itemId||row.id);if(needed.has(key))archiveLookupIndex.workById.set(key,row);}for(const row of tables.archiveItems||[]){const key=String(row.archiveId||row.itemId||row.id);if(needed.has(key))archiveLookupIndex.archiveById.set(key,row);}for(const entry of collected){const row=entry.row;const archiveRecord=buildArchiveRecord(row,tables,deletedAt,actor,archiveLookupIndex);const existingArchive=tables.archiveItems.findIndex(x=>String(x.archiveId||x.itemId)===String(row.itemId));if(existingArchive>=0)tables.archiveItems[existingArchive]=archiveRecord;else tables.archiveItems.push(archiveRecord);const wi=tables.workItems.findIndex(x=>String(x.itemId)===String(row.itemId));if(wi>=0)tables.workItems.splice(wi,1);}const savedEvents=[];const raw=relatedEvents.find(e=>String(e.itemId||'')===id)||relatedEvents[0];if(raw){const event=ensureActivityIndexes({...raw,itemId:id,itemName:current.name,itemType:current.type,rootParentId:current.rootParentId||id,parentId:current.parentId||null,userId:actor,at:deletedAt,kind:'delete',affectedCount:collected.length,affectedDescendantCount:Math.max(0,collected.length-1)});event.action=`Deleted ${current.type}: ${current.name}`;event.summary=event.action;savedEvents.push(toAppEvent(storeActivityEvent(tables,event)));}else{const action=`Deleted ${current.type}: ${current.name}`;const fallback=storeActivityEvent(tables,{id:`evt_delete_${id}_${Date.now()}`,itemId:id,itemName:current.name,itemType:current.type,rootParentId:current.rootParentId||id,parentId:current.parentId||null,userId:actor,action,summary:action,kind:'delete',at:deletedAt,affectedCount:collected.length,affectedDescendantCount:Math.max(0,collected.length-1)});savedEvents.push(toAppEvent(fallback));}persist();return respond({ok:true,itemId:id,archived:true,archivedItemIds:collected.map(x=>String(x.row.itemId)),activityEvents:savedEvents});}
-  if(method==='GET'&&clean==='/activity'){let rows=readAllActivityEvents();const root=q.get('rootParentId');const item=q.get('itemId');const parent=q.get('parentId');if(root)rows=rows.filter(e=>e.rootPK===`ROOT#${root}`);if(item)rows=rows.filter(e=>e.itemPK===`ITEM#${item}`);if(parent)rows=rows.filter(e=>e.parentPK===`PARENT#${parent}`);rows.sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))||String(b.eventId||b.id||'').localeCompare(String(a.eventId||a.id||'')));const offset=Math.max(0,Number(q.get('offset')||0));const limit=Math.max(1,Math.min(250,Number(q.get('limit')||100)));return respond({events:rows.slice(offset,offset+limit).map(toAppEvent),count:rows.length,nextOffset:offset+limit<rows.length?offset+limit:null});}
+  if(method==='GET'&&clean==='/activity'){const requestedIds=q.get('itemIds');let rows=requestedIds?readActivityEventsForItems([...new Set(requestedIds.split(',').map(String).filter(Boolean))]):readAllActivityEvents();const root=q.get('rootParentId');const item=q.get('itemId');const parent=q.get('parentId');if(root)rows=rows.filter(e=>e.rootPK===`ROOT#${root}`);if(item)rows=rows.filter(e=>e.itemPK===`ITEM#${item}`);if(parent)rows=rows.filter(e=>e.parentPK===`PARENT#${parent}`);rows.sort((a,b)=>String(b.at||'').localeCompare(String(a.at||''))||String(b.eventId||b.id||'').localeCompare(String(a.eventId||a.id||'')));const offset=Math.max(0,Number(q.get('offset')||0));const limit=Math.max(1,Math.min(250,Number(q.get('limit')||100)));return respond({events:rows.slice(offset,offset+limit).map(toAppEvent),count:rows.length,nextOffset:offset+limit<rows.length?offset+limit:null});}
   if(method==='POST'&&clean==='/activity'){const e=storeActivityEvent(tables,body);persist();return respond(toAppEvent(e));}
   m=clean.match(/^\/activity\/([^/]+)$/);
   if(m&&method==='PATCH'){const id=decodeURIComponent(m[1]);const i=tables.activityEvents.findIndex(x=>x.eventId===id);if(i<0)throw new Error('Activity event not found.');tables.activityEvents[i]=persistActivityEvent({...tables.activityEvents[i],...(body||{}),eventId:id});persist();return respond(toAppEvent(tables.activityEvents[i]));}
@@ -2066,6 +2066,13 @@ function readTables(includeActivity=false){
  }
  async function queryAssigned(userId,options={}){const dateMode=options.dateMode||'updated';const p=new URLSearchParams({userId,dateMode,direction:options.direction||(dateMode==='created'?'asc':'desc')});for(const [key,q] of Object.entries({type:options.type,status:options.status,priority:options.priority,q:options.query,from:options.from,to:options.to,limit:options.limit,offset:options.offset}))if(q!==undefined&&q!==null&&q!=='')p.set(key,String(q));const path=`/items/assigned-to-me?${p}`;return mode==='api'?requestCachedGet(path,`assigned-query:${userId}:${p}`):request('GET',path);}
  async function queryActivity(itemId,scope='item',query=''){const p=new URLSearchParams({scope});if(query)p.set('q',query);const path=`/items/${encodeURIComponent(itemId)}/activity?${p}`;return mode==='api'?requestCachedGet(path,`activity:${String(itemId)}:${scope}:${query}`):request('GET',path);}
+ async function queryActivityForItems(itemIds){
+  const ids=[...new Set((itemIds||[]).map(String).filter(Boolean))];
+  if(!ids.length)return {events:[],count:0};
+  if(ids.length>100)throw new Error('Activity reconciliation accepts at most 100 changed item IDs per request.');
+  const params=new URLSearchParams({itemIds:ids.join(',')});
+  return request('GET','/activity?'+params.toString());
+ }
  async function queryGlobalActivity(options={}){const params=new URLSearchParams({scope:'application',limit:String(Math.max(1,Math.min(250,Number(options.limit)||100))),offset:String(Math.max(0,Number(options.offset)||0))});const path='/activity?'+params.toString();return mode==='api'?requestCachedGet(path,'activity:application:'+params.toString()):request('GET',path);}
  async function listArchive(options={},onPage){
   const pageSize=Math.max(1,Math.min(500,Number(options.limit||250)));
@@ -2089,7 +2096,7 @@ function readTables(includeActivity=false){
  async function updateUserPrivilege(userId,privilege){return request('PATCH','/users/'+encodeURIComponent(userId),{privilege});}
  async function updateMyPins(itemIds){return request('PATCH','/users/me/pins',{itemIds:[...new Set((itemIds||[]).map(String))]});}
  async function resolveItems(ids){const params=new URLSearchParams({ids:[...new Set((ids||[]).map(String))].join(',')});return request('GET','/items/resolve?'+params.toString());}
- window.TeamFollowUpDataApi=Object.freeze({mode,tableNames:names,request,bootstrap,commitSnapshot,commitItemMutation,subscribeRealtimeChanges,queryTopLevel,queryChildren,queryRootItems,queryAssigned,queryActivity,queryGlobalActivity,listArchive,restoreArchive,verifyCurrentPassword,getMyProfile,updateMyProfile,updateUserPrivilege,updateMyPins,resolveItems});
+ window.TeamFollowUpDataApi=Object.freeze({mode,tableNames:names,request,bootstrap,commitSnapshot,commitItemMutation,subscribeRealtimeChanges,queryTopLevel,queryChildren,queryRootItems,queryAssigned,queryActivity,queryActivityForItems,queryGlobalActivity,listArchive,restoreArchive,verifyCurrentPassword,getMyProfile,updateMyProfile,updateUserPrivilege,updateMyPins,resolveItems});
 })();
 </script>
 
@@ -4426,6 +4433,20 @@ async function handleDemoRealtimeChange(change){
   }
  }
  invalidateHierarchyIndex();
+ const activityItemIds=[...new Set([...updatedIds,...deletedIds])];
+ const activityRows=[];
+ if(activityItemIds.length&&typeof api.queryActivityForItems==='function'){
+  for(let start=0;start<activityItemIds.length;start+=100){
+   const result=await api.queryActivityForItems(activityItemIds.slice(start,start+100));
+   activityRows.push(...(result?.events||result?.activity||[]));
+  }
+ }
+ const activityEvents=activityRows.map(normalizeActivityEventForUi).filter(event=>event&&event.id);
+ if(activityEvents.length){
+  mergeActivityEventsIntoWorkspace(activityEvents);
+  if(lastApiSnapshot){const merged=mergeActivityRows(lastApiSnapshot.activity||[],activityEvents);lastApiSnapshot.activity=merged.rows;}
+  updateApplicationHistoryFromCommittedEvents(activityEvents);
+ }
  if(topLevelIds.has(String(ui.selectedParentId||''))&&!data.parents.some(row=>String(row.id)===String(ui.selectedParentId))){
   ui.selectedParentId=data.parents[0]?.id||'';
   ui.selectedAssignedItemId=null;
@@ -4451,15 +4472,24 @@ async function handleDemoRealtimeChange(change){
  const parentListChanged=topLevelIds.size>0||[...resolvedById.values()].some(item=>item.type==='project'||item.type==='job');
  if(parentListChanged)renderParentList({skipRemote:true});
  const selectedRootId=String(ui.selectedParentId||'');
- const selectedAffected=Boolean(selectedRootId&&(rootIds.has(selectedRootId)||itemIds.has(selectedRootId)));
- if(ui.page==='workspace'&&selectedAffected)renderDetail();
+ const selectedAffected=Boolean(selectedRootId&&(rootIds.has(selectedRootId)||updatedIds.has(selectedRootId)||deletedIds.has(selectedRootId)));
+ if(ui.page==='workspace'&&(selectedAffected||parentListChanged))renderDetail();
  if(ui.page==='account'&&ui.accountTab==='search'&&parentListChanged)renderAccountPage();
- if(ui.modal?.kind==='global-history')void refreshApplicationHistory(true);
- else if(ui.modal?.kind==='history'){
-  const modalItem=allItem(ui.modal.itemId);
+ const activityRootsToRefresh=new Set();
+ if(ui.modal?.kind==='history'){
+  const modalItem=allItem(ui.modal.itemId)||ui.modal.itemSnapshot;
   const modalRoot=String(modalItem?.rootParentId||rootParent(modalItem)?.id||ui.modal.itemId||'');
-  if(rootIds.has(modalRoot))void refreshActivityFor(modalRoot,'all');
+  if(rootIds.has(modalRoot))activityRootsToRefresh.add(modalRoot);
  }
+ if(selectedRootId&&rootIds.has(selectedRootId))activityRootsToRefresh.add(selectedRootId);
+ for(const rootId of activityRootsToRefresh){
+  renderAfterActivityRefresh(rootId,'all');
+  const activityLoaded=dataLoadState.activityLoaded?.has(rootId+':all');
+  const historyModalVisible=ui.modal?.kind==='history'&&String(historyRootIdFor(ui.modal.itemId))===rootId;
+  const selectedActivityVisible=ui.page==='workspace'&&ui.tab==='activity'&&selectedRootId===rootId;
+  if(!activityLoaded&&(historyModalVisible||selectedActivityVisible))void refreshActivityFor(rootId,'all');
+ }
+ if(ui.modal?.kind==='global-history'&&applicationHistoryCacheInvalidated)void refreshApplicationHistory(false);
 }
 let demoRealtimeApplyQueue=Promise.resolve();
 function queueDemoRealtimeChange(change){
