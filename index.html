@@ -1440,7 +1440,8 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
    const keep=(memoryTables.activityEvents||[]).filter(event=>!ids.has(String(event.itemId||'')));
    const merged=new Map(keep.map(event=>[String(event.eventId||event.id||''),event]));
    for(const event of incoming)merged.set(String(event.eventId||event.id||''),event);
-   memoryTables.activityEvents=[...merged.values()];activityTableDirty=false;
+   for(const event of memoryTables.activityEvents||[]){const id=String(event.eventId||event.id||'');if(pendingActivityEventIds.has(id))merged.set(id,event);}
+   memoryTables.activityEvents=[...merged.values()];activityTableDirty=pendingActivityEventIds.size>0;
   }
  }
  function receiveBuiltinRealtimeChange(change){
