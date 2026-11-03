@@ -146,11 +146,11 @@ assert.equal(storage.getItem('team-follow-up-view-state-v1:u2'), null, 'Explicit
 assert.equal(persistentStorage.getItem('team-follow-up-view-state-v1:u2'), null, 'Explicit sign-out also clears the persistent view-state backup.');
 
 const localAuthStart = html.indexOf("const LOCAL_SESSION_KEY='team-follow-up-local-auth-v2';");
-const localAuthEnd = html.indexOf('\\n screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;', localAuthStart);
+const localAuthEnd = html.indexOf('\n screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;', localAuthStart);
 assert.ok(localAuthStart >= 0 && localAuthEnd > localAuthStart,
   'The demo session implementation is a single extractable helper block.');
 const localAuthSource = html.slice(localAuthStart, localAuthEnd);
-assert.doesNotMatch(localAuthSource, /window\\.name|history\\.state|history\\.replaceState|location\\.href|__team_follow_up_tab/,
+assert.doesNotMatch(localAuthSource, /window\.name|history\.state|history\.replaceState|location\.href|__team_follow_up_tab/,
   'Demo identity restoration does not depend on browser-specific tab metadata or URL markers.');
 assert.ok(localAuthSource.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)') &&
           localAuthSource.includes('localStorage.getItem(LOCAL_SESSION_KEY)'),
@@ -182,7 +182,7 @@ const firstTabContext = {
   console
 };
 vm.runInNewContext(localAuthSource +
-  '\\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;',
+  '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;',
   firstTabContext);
 
 // Sign-in writes the exact user to both stores.
@@ -197,7 +197,7 @@ const refreshedTabContext = {
   ...firstTabContext,
   sessionStorage: refreshedTabStorage
 };
-vm.runInNewContext(localAuthSource + '\\nthis.restore=restoreLocalSessionUser;', refreshedTabContext);
+vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;', refreshedTabContext);
 assert.equal(refreshedTabContext.restore(), 'u2',
   'A hard refresh restores the same user from the tab-scoped session without asking for credentials.');
 
@@ -209,7 +209,7 @@ const secondTabContext = {
   sessionStorage: secondTabStorage
 };
 vm.runInNewContext(localAuthSource +
-  '\\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;',
+  '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;',
   secondTabContext);
 secondTabContext.persist('u3');
 assert.equal(secondTabContext.restore(), 'u3');
@@ -224,7 +224,7 @@ const recoveredTabContext = {
   ...firstTabContext,
   sessionStorage: recoveredTabStorage
 };
-vm.runInNewContext(localAuthSource + '\\nthis.restore=restoreLocalSessionUser;', recoveredTabContext);
+vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', recoveredTabContext);
 assert.equal(recoveredTabContext.restore(), 'u3',
   'The localStorage recovery copy works when sessionStorage is absent.');
 assert.equal(recoveredTabStorage.getItem('team-follow-up-local-auth-v2'), 'u3',
@@ -232,7 +232,6 @@ assert.equal(recoveredTabStorage.getItem('team-follow-up-local-auth-v2'), 'u3',
 
 // Explicit sign-out removes this tab's session and the shared recovery copy.
 // Other already-open tabs retain their own sessionStorage identity.
-refreshedTabContext.clear = firstTabContext.clear;
 refreshedTabContext.clear();
 assert.equal(refreshedTabStorage.getItem('team-follow-up-local-auth-v2'), null);
 assert.equal(sharedLocalStorage.getItem('team-follow-up-local-auth-v2'), null);
@@ -249,7 +248,7 @@ const legacyContext = {
   localStorage: createMemoryStorage()
 };
 vm.runInNewContext(localAuthSource +
-  '\\nthis.restore=restoreLocalSessionUser;',
+  '\nthis.restore=restoreLocalSessionUser;',
   legacyContext);
 assert.equal(legacyContext.restore(), 'u4');
 assert.equal(legacyTabStorage.getItem('team-follow-up-local-auth-v2'), 'u4');
