@@ -2111,6 +2111,44 @@ function readTables(includeActivity=false){
  const validIds=['u1','u2','u3','u4','u5','u6','root'];
  const state={modules:null,authMode:null,mode:'signIn',pendingUser:'',nextStep:null,appStarted:false,submitting:false};
  const LOCAL_SESSION_KEY='team-follow-up-local-auth-v1';
+ const LOCAL_TAB_NAME_MARKER='|__TEAM_FOLLOW_UP_LOCAL_TAB_V1__:';
+ function localSessionTabStorageKey(){
+  const currentName=String(window.name||'');
+  const markerIndex=currentName.lastIndexOf(LOCAL_TAB_NAME_MARKER);
+  let tabId=markerIndex>=0?currentName.slice(markerIndex+LOCAL_TAB_NAME_MARKER.length):'';
+  if(!/^[A-Za-z0-9_-]{8,}$/.test(tabId)){
+   tabId=String(window.crypto?.randomUUID?.()||('tab_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2)));
+   window.name=currentName+LOCAL_TAB_NAME_MARKER+tabId;
+  }
+  return LOCAL_SESSION_KEY+':'+tabId;
+ }
+ function persistLocalSessionUser(teamUserId){
+  const userId=String(teamUserId||'');
+  try{sessionStorage.setItem(LOCAL_SESSION_KEY,userId);}catch(error){}
+  try{localStorage.setItem(localSessionTabStorageKey(),userId);}catch(error){console.warn('The demo identity could not be backed up for this browser tab.',error);}
+ }
+ function restoreLocalSessionUser(){
+  let saved='';
+  try{saved=sessionStorage.getItem(LOCAL_SESSION_KEY)||'';}catch(error){}
+  if(validIds.includes(saved)){
+   try{localStorage.setItem(localSessionTabStorageKey(),saved);}catch(error){}
+   return saved;
+  }
+  try{saved=localStorage.getItem(localSessionTabStorageKey())||'';}catch(error){}
+  if(validIds.includes(saved)){
+   try{sessionStorage.setItem(LOCAL_SESSION_KEY,saved);}catch(error){}
+   return saved;
+  }
+  return '';
+ }
+ function clearLocalSessionUser(){
+  try{sessionStorage.removeItem(LOCAL_SESSION_KEY);}catch(error){}
+  try{localStorage.removeItem(localSessionTabStorageKey());}catch(error){}
+  try{
+   const currentName=String(window.name||''),markerIndex=currentName.lastIndexOf(LOCAL_TAB_NAME_MARKER);
+   if(markerIndex>=0)window.name=currentName.slice(0,markerIndex);
+  }catch(error){}
+ }
  screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;
  const ar=root.lang==='ar';
  const copy=ar?{
@@ -2215,7 +2253,7 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
   state.authMode='local';state.modules=null;state.mode='signIn';state.submitting=false;
   $('signInModeNote').textContent=copy.localWarning;$('signInModeNote').hidden=false;
   $('signInForgotPassword').hidden=true;$('signInSubmit').disabled=false;setError('');enterDefaultMode();
-  try{const saved=sessionStorage.getItem(LOCAL_SESSION_KEY);if(validIds.includes(saved)){finishVisualAuth(makeLocalContext(saved,localTeamUsers.find(u=>u.id===saved)?.aliases[0]||''));return;}}catch(e){}
+  const saved=restoreLocalSessionUser();if(validIds.includes(saved)){finishVisualAuth(makeLocalContext(saved,localTeamUsers.find(u=>u.id===saved)?.aliases[0]||''));return;}
   $('signInUsername').value='';$('signInPassword').value='';$('signInSubmit').disabled=false;$('signInForgotPassword').hidden=true;$('signInUsername').focus({preventScroll:true});
  }
  function resolveTeamUserId(user,attributes){
@@ -2315,7 +2353,7 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
    if(!teamUserId){setError(copy.localUnknownUser);$('signInUsername').focus();return;}
    setBusy(true,ar?'جارٍ التحقق…':'Checking password…');
    if(!await verifyLocalPassword(teamUserId,password)){setError(ar?'كلمة المرور غير صحيحة.':'The password is incorrect.');setBusy(false);$('signInPassword').focus();return;}
-   try{sessionStorage.setItem(LOCAL_SESSION_KEY,teamUserId);}catch(e){}
+   persistLocalSessionUser(teamUserId);
    setBusy(false);finishVisualAuth(makeLocalContext(teamUserId,username));return;
   }
   if(!state.modules){setError(isConfigured()?copy.sdkError:copy.configure);return;}
@@ -2353,7 +2391,7 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
  async function signOut(){
   window.__TEAM_FOLLOW_UP_CLEAR_VIEW_STATE?.();
   const app=$('app');root.classList.add('auth-pending');document.body.classList.add('signin-open');app.inert=true;app.setAttribute('aria-hidden','true');screen.hidden=false;enterDefaultMode();$('signInUsername').value='';$('signInPassword').value='';
-  if(state.authMode==='local'){try{sessionStorage.removeItem(LOCAL_SESSION_KEY);}catch(e){}}
+  if(state.authMode==='local')clearLocalSessionUser();
   else{try{await state.modules?.signOut({global:true});}catch(e){try{await state.modules?.signOut();}catch(_){}}}
   window.__TEAM_FOLLOW_UP_AUTH_CONTEXT=null;$('signInModeNote').hidden=state.authMode!=='local';$('signInUsername').focus({preventScroll:true});
  }
