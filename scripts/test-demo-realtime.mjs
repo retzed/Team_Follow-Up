@@ -94,8 +94,8 @@ const handlerEnd = html.indexOf('async function togglePinnedItem(itemId){', hand
 assert.ok(handlerStart >= 0 && handlerEnd > handlerStart, 'the demo real-time view handler must exist');
 const handlerSource = html.slice(handlerStart, handlerEnd);
 
-function createHandlerContext(userId, loading = false, resolvedItems = []) {
-  const calls = { assigned: 0, roots: 0, parentRenders: 0, detailRenders: 0, accountRenders: 0, resolved: [] };
+function createHandlerContext(userId, loading = false, resolvedItems = [], activityEvents = []) {
+  const calls = { assigned: 0, roots: 0, parentRenders: 0, detailRenders: 0, accountRenders: 0, resolved: [], activityReads: [], activityMerged: [], activityHistoryUpdates: [], activityRendered: [], activityRefreshes: [], applicationHistoryRefreshes: [] };
   const ui = {
     actingUserId: userId,
     page: 'account',
@@ -117,6 +117,10 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
     resolveItems: async ids => {
       calls.resolved.push([...ids]);
       return { items: resolvedItems.filter(item => ids.includes(String(item.id))) };
+    },
+    queryActivityForItems: async ids => {
+      calls.activityReads.push([...ids]);
+      return { events: activityEvents };
     }
   };
   const handlerContext = {
@@ -124,7 +128,8 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
     ui,
     data,
     lastApiSnapshot: { parents: data.parents.map(row => ({ ...row })), children: [], activity: [] },
-    dataLoadState: { childrenLoaded: new Set(['project-1']) },
+    dataLoadState: { childrenLoaded: new Set(['project-1']), activityLoaded: new Set() },
+    applicationHistoryCacheInvalidated: false,
     rawCurrentUser: () => ({ id: userId }),
     rootParent: row => row?.rootParentId ? data.parents.find(parent => parent.id === row.rootParentId) || { id: row.rootParentId } : null,
     loadAccountAssignedItems: () => { calls.assigned += 1; return Promise.resolve(); },
@@ -133,8 +138,14 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
     renderDetail: () => { calls.detailRenders += 1; },
     renderAccountPage: () => { calls.accountRenders += 1; },
     ensureRootChildrenLoaded: async () => { calls.roots += 1; },
-    refreshActivityFor: async () => {},
-    refreshApplicationHistory: () => {},
+    refreshActivityFor: async (id, scope) => { calls.activityRefreshes.push([id, scope]); },
+    refreshApplicationHistory: silent => { calls.applicationHistoryRefreshes.push(silent); },
+    normalizeActivityEventForUi: event => event,
+    mergeActivityEventsIntoWorkspace: rows => { calls.activityMerged.push(rows); data.activity.push(...rows); return rows.length > 0; },
+    mergeActivityRows: (existing, incoming) => ({ rows: [...existing, ...incoming] }),
+    updateApplicationHistoryFromCommittedEvents: rows => { calls.activityHistoryUpdates.push(rows); },
+    renderAfterActivityRefresh: (id, scope) => { calls.activityRendered.push([id, scope]); },
+    historyRootIdFor: id => id === 'task-1' ? 'project-1' : id,
     allItem: id => [...data.parents, ...data.children].find(row => String(row.id) === String(id)) || null,
     toAppItem: row => row,
     invalidateHierarchyIndex: () => {},
@@ -247,6 +258,40 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
   assert.equal(queued.data.children[0].version, 2);
   assert.equal(queued.ui.accountAssignedRows[0].version, 2, 'Assigned Items also retains the latest committed version');
   assert.equal(queued.calls.roots, 0, 'real-time item changes do not replace the subtree with a delayed query');
+}
+
+
+{
+  const event = { id: 'evt-task-activity', itemId: 'task-1', rootParentId: 'project-1', at: '2026-11-03T10:00:00.000Z', action: 'Updated task' };
+  const updated = { id: 'task-1', type: 'task', name: 'Updated task', rootParentId: 'project-1', parentId: 'project-1', ownerId: 'u2', version: 2 };
+  const { handlerContext, calls, ui, data } = createHandlerContext('u2', false, [updated], [event]);
+  ui.page = 'workspace';
+  ui.tab = 'activity';
+  handlerContext.dataLoadState.activityLoaded.add('project-1:all');
+  await handlerContext.handleDemoRealtimeChange({
+    type: 'items.changed', changeId: 'activity-realtime',
+    itemId: 'task-1', itemIds: ['task-1'], rootParentIds: ['project-1'],
+    assigneeIds: ['u2'], parentIds: ['project-1'], topLevelIds: [], deleted: false
+  });
+  assert.deepEqual(calls.activityReads, [['task-1']], 'the demo reads Activity only for the item IDs in the change signal');
+  assert.equal(calls.activityMerged[0][0].id, 'evt-task-activity', 'the latest audit event is merged into the workspace');
+  assert.equal(calls.activityHistoryUpdates[0][0].id, 'evt-task-activity', 'the application-wide history cache receives the new audit event');
+  assert.deepEqual(calls.activityRendered, [['project-1', 'all']], 'the selected workspace Activity timeline refreshes in real time');
+  assert.equal(data.activity[0].id, 'evt-task-activity');
+}
+
+{
+  const event = { id: 'evt-global-history', itemId: 'task-1', rootParentId: 'project-1', at: '2026-11-03T10:00:00.000Z', action: 'Updated task' };
+  const updated = { id: 'task-1', type: 'task', rootParentId: 'project-1', ownerId: 'u2', version: 2 };
+  const { handlerContext, calls, ui } = createHandlerContext('u2', false, [updated], [event]);
+  ui.modal = { kind: 'global-history' };
+  handlerContext.applicationHistoryCacheInvalidated = true;
+  await handlerContext.handleDemoRealtimeChange({
+    type: 'items.changed', changeId: 'global-activity-realtime',
+    itemId: 'task-1', itemIds: ['task-1'], rootParentIds: ['project-1'],
+    assigneeIds: ['u2'], deleted: false
+  });
+  assert.deepEqual(calls.applicationHistoryRefreshes, [false], 'an open global Activity history view reloads visibly after its cache becomes stale');
 }
 
 {
@@ -440,6 +485,10 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
     'the table flush retries only failed event IDs, not the complete history');
 }
 
+assert.ok(handlerSource.includes('api.queryActivityForItems') && handlerSource.includes('mergeActivityEventsIntoWorkspace(activityEvents)'),
+  'the demo reconciles Activity events by changed item IDs rather than waiting for a parent index update');
+assert.ok(handlerSource.includes("renderAfterActivityRefresh(rootId,'all')"),
+  'the selected workspace Activity timeline is refreshed when an affected root changes');
 assert.ok(html.includes("new BroadcastChannel('team-follow-up-demo-realtime-v1')"),
   'same-origin demo tabs use BroadcastChannel for prompt update delivery.');
 assert.ok(html.includes("event.key!==REALTIME_SIGNAL_KEY||!event.newValue"),
