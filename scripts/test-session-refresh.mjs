@@ -110,6 +110,16 @@ assert.equal(refreshedUi.accountTab, 'pinned');
 assert.deepEqual([...refreshedUi.expanded], ['task-9', 'task-10']);
 assert.equal(refreshedUi.modal, null, 'A browser refresh does not reopen an unfinished modal.');
 assert.equal(secondContext.restoredWorkspaceScrollY, 584);
+const fallbackSessionStorage = createMemoryStorage();
+const fallbackUi = { ...refreshedUi, page: 'account', selectedParentId: '', selectedAssignedItemId: null, tab: 'overview', expanded: new Set() };
+const fallbackContext = {
+  ui: fallbackUi, sessionStorage: fallbackSessionStorage, localStorage: persistentStorage,
+  window: { scrollY: 0, addEventListener() {} }, Set, Number, Math, JSON, String
+};
+vm.runInNewContext(helperSource + '\\nthis.restoredWorkspaceScrollY=restoredWorkspaceScrollY;', fallbackContext);
+assert.equal(fallbackUi.page, 'workspace', 'Persistent view state restores the last opened application page when tab-scoped state is unavailable.');
+assert.equal(fallbackUi.selectedParentId, 'project-42', 'Persistent view state restores the selected parent.');
+assert.equal(fallbackUi.tab, 'activity', 'Persistent view state restores the open detail tab.');
 const otherUserUi = { ...refreshedUi, actingUserId: 'u3', page: 'account', selectedParentId: '' };
 const thirdContext = {
   ui: otherUserUi, sessionStorage: storage, localStorage: persistentStorage,
