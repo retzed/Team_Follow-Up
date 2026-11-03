@@ -162,7 +162,7 @@ assert.ok(localAuthSource.indexOf('if(!storedAsBackup)return false;') < localAut
 assert.ok(html.includes("const saved=restoreLocalSessionUser();if(validIds.includes(saved)){finishVisualAuth(makeLocalContext(saved,localTeamUsers.find(u=>u.id===saved)?.aliases[0]||''));return;}"),
   'Local authentication restores the saved user before showing the credential form.');
 assert.ok(html.includes('if(!persistLocalSessionUser(teamUserId)){'),
-  'The demo refuses to enter the application unless at least one browser storage mechanism accepts the session.');
+  'The demo refuses to enter the application unless persistent localStorage accepts and verifies the session.');
 assert.ok(html.indexOf('if(!persistLocalSessionUser(teamUserId)){') < html.indexOf('finishVisualAuth(makeLocalContext(teamUserId,username))'),
   'A successful local sign-in is persisted and verified before the application UI is started.');
 assert.ok(html.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)===userId') &&
