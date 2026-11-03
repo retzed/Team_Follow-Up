@@ -4472,7 +4472,7 @@ async function handleDemoRealtimeChange(change){
   }
  }
  invalidateHierarchyIndex();
- const activityItemIds=[...new Set([...updatedIds,...deletedIds])];
+ const activityItemIds=[...itemIds];
  const activityRows=[];
  if(activityItemIds.length&&typeof api.queryActivityForItems==='function'){
   for(let start=0;start<activityItemIds.length;start+=100){
