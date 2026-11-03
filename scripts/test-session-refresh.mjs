@@ -162,15 +162,6 @@ assert.ok(html.indexOf('persistLocalSessionUser(teamUserId);') < html.indexOf('f
 assert.ok(html.includes("if(cfg.localAuth?.enabled===true&&!hasCognitoConfigurationAttempt()){initializeLocalAuth();return;}"),
   'The public demo selects local-session restoration before entering the Cognito flow.');
 
-const createMemoryStorage = () => {
-  const map = new Map();
-  return {
-    map,
-    getItem: key => map.has(String(key)) ? map.get(String(key)) : null,
-    setItem: (key, value) => map.set(String(key), String(value)),
-    removeItem: key => map.delete(String(key))
-  };
-};
 const sharedLocalStorage = createMemoryStorage();
 const firstTabStorage = createMemoryStorage();
 const firstTabContext = {
