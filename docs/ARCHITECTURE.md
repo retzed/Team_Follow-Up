@@ -92,7 +92,7 @@ The four logical collections are:
 4. The data-access layer saves the changed logical tables, and the UI refreshes affected lists and timelines.
 5. A page reload reads the latest browser-local state when storage remains available.
 
-The `esc()` helper is the central output-encoding boundary for text interpolated into HTML templates. Plain text should be assigned using `textContent` where markup is not needed. Data-adapter storage failures are caught and logged. The pre-authentication gate is stricter for identity: it does not start the application unless the signed-in demo identity can be saved to at least one browser store.
+The `esc()` helper is the central output-encoding boundary for text interpolated into HTML templates. Plain text should be assigned using `textContent` where markup is not needed. Data-adapter storage failures are caught and logged. The pre-authentication gate is stricter for identity: it does not start the application unless the signed-in demo identity is present in, or can be written to and read back from, persistent `localStorage`.
 
 ## Frontend responsiveness and interaction lifecycle
 
