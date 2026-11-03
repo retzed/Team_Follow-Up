@@ -2115,16 +2115,22 @@ function readTables(includeActivity=false){
  function persistLocalSessionUser(teamUserId){
   const userId=String(teamUserId||'');
   if(!validIds.includes(userId))return false;
-  let storedInTab=false,storedAsBackup=false;
-  try{
-   sessionStorage.setItem(LOCAL_SESSION_KEY,userId);
-   storedInTab=sessionStorage.getItem(LOCAL_SESSION_KEY)===userId;
-  }catch(error){console.warn('The demo identity could not be stored in this tab session.',error);}
+  // localStorage is the durable session record and is also required by the
+  // browser-local demo data adapter. Never accept a tab-only sign-in: it can
+  // disappear on reload in restricted/private browser contexts.
+  let storedAsBackup=false;
   try{
    localStorage.setItem(LOCAL_SESSION_KEY,userId);
    storedAsBackup=localStorage.getItem(LOCAL_SESSION_KEY)===userId;
-  }catch(error){console.warn('The demo identity could not be stored in the browser recovery copy.',error);}
-  return storedInTab||storedAsBackup;
+  }catch(error){console.warn('The demo identity could not be stored persistently in browser localStorage.',error);}
+  if(!storedAsBackup)return false;
+  // sessionStorage keeps already-open tabs isolated when different demo users
+  // sign in concurrently. It is an optimization, not the persistence source.
+  try{
+   sessionStorage.setItem(LOCAL_SESSION_KEY,userId);
+   if(sessionStorage.getItem(LOCAL_SESSION_KEY)!==userId)console.warn('The tab-specific demo identity could not be verified; the persistent browser session remains available.');
+  }catch(error){console.warn('The tab-specific demo identity could not be stored; the persistent browser session remains available.',error);}
+  return true;
  }
  function restoreLocalSessionUser(){
   let saved='',legacySession=false,legacyBackup=false;
@@ -2132,13 +2138,32 @@ function readTables(includeActivity=false){
   // origin-wide recovery copy or rewrite that shared copy during a normal refresh.
   try{
    saved=sessionStorage.getItem(LOCAL_SESSION_KEY)||'';
-   if(validIds.includes(saved)){try{sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}return saved;}
-   saved=sessionStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
-   legacySession=validIds.includes(saved);
+   if(!validIds.includes(saved)){
+    saved=sessionStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
+    legacySession=validIds.includes(saved);
+   }
   }catch(error){saved='';}
-  if(legacySession){
-   try{sessionStorage.setItem(LOCAL_SESSION_KEY,saved);sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
-   try{if(localStorage.getItem(LOCAL_SESSION_KEY)!==saved)localStorage.setItem(LOCAL_SESSION_KEY,saved);localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+  if(validIds.includes(saved)){
+   // A tab entry preserves per-tab identity, but it is accepted only when a
+   // durable origin-level record is available. Migrate older tab-only sessions
+   // once when localStorage permits it; otherwise fail closed instead of
+   // restoring a session that may disappear on the next refresh.
+   let durableUser='';
+   try{
+    durableUser=localStorage.getItem(LOCAL_SESSION_KEY)||'';
+    if(!validIds.includes(durableUser))durableUser=localStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
+    if(!validIds.includes(durableUser)){
+     localStorage.setItem(LOCAL_SESSION_KEY,saved);
+     durableUser=localStorage.getItem(LOCAL_SESSION_KEY)||'';
+    }
+   }catch(error){durableUser='';}
+   if(!validIds.includes(durableUser))return '';
+   if(legacySession){
+    try{sessionStorage.setItem(LOCAL_SESSION_KEY,saved);sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+    try{if(localStorage.getItem(LOCAL_SESSION_KEY)!==saved)localStorage.setItem(LOCAL_SESSION_KEY,saved);localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+   }else{
+    try{sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+   }
    return saved;
   }
   // If this tab has no usable session, recover the most recently signed-in demo
@@ -2367,7 +2392,12 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
    const teamUserId=resolveLocalTeamUserId(username);
    if(!teamUserId){setError(copy.localUnknownUser);$('signInUsername').focus();return;}
    setBusy(true,ar?'جارٍ التحقق…':'Checking password…');
-   if(!await verifyLocalPassword(teamUserId,password)){setError(ar?'كلمة المرور غير صحيحة.':'The password is incorrect.');setBusy(false);$('signInPassword').focus();return;}
+   let passwordValid=false;
+   try{passwordValid=await verifyLocalPassword(teamUserId,password);}catch(storageError){
+    console.warn('The demo password record could not be verified or persisted.',storageError);
+    setError(copy.storageUnavailable);setBusy(false);$('signInPassword').focus();return;
+   }
+   if(!passwordValid){setError(ar?'كلمة المرور غير صحيحة.':'The password is incorrect.');setBusy(false);$('signInPassword').focus();return;}
    if(!persistLocalSessionUser(teamUserId)){
     setError(copy.storageUnavailable);setBusy(false);$('signInPassword').focus();return;
    }
