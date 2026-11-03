@@ -275,7 +275,7 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
     publishBuiltinRealtimeChange: change => { flushContext.published = change; },
     console: { warn() {} }
   };
-  vm.runInNewContext(flushSource + '\nthis.flushTableStorageNow=flushTableStorageNow;', context);
+  vm.runInNewContext(flushSource + '\nthis.flushTableStorageNow=flushTableStorageNow;', flushContext);
   flushContext.flushTableStorageNow();
   const merged = JSON.parse(storage.getItem('team-follow-up-builtin-dynamodb-tables-v4'));
   const byId = new Map(merged.workItems.map(row => [row.itemId, row]));
@@ -325,7 +325,7 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
     publishBuiltinRealtimeChange() {},
     console: { warn() {} }
   };
-  vm.runInNewContext(flushSource + '\\nthis.flushTableStorageNow=flushTableStorageNow;', context);
+  vm.runInNewContext(flushSource + '\nthis.flushTableStorageNow=flushTableStorageNow;', context);
   context.flushTableStorageNow();
   assert.deepEqual(attempted, ['evt-4999'],
     'an item save must retry only Activity events whose individual localStorage write previously failed, not rewrite all 5,000 history rows');
