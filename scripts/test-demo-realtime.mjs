@@ -275,7 +275,7 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
     publishBuiltinRealtimeChange: change => { flushContext.published = change; },
     console: { warn() {} }
   };
-  vm.runInNewContext(flushSource + '\nthis.flushTableStorageNow=flushTableStorageNow;', flushContext);
+  vm.runInNewContext(flushSource + '\nthis.flushTableStorageNow=flushTableStorageNow;', context);
   flushContext.flushTableStorageNow();
   const merged = JSON.parse(storage.getItem('team-follow-up-builtin-dynamodb-tables-v4'));
   const byId = new Map(merged.workItems.map(row => [row.itemId, row]));
@@ -286,6 +286,10 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
 }
 
 {
+  const flushStart = html.indexOf(' function flushTableStorageNow(){');
+  const flushEnd = html.indexOf(' function scheduleTableStorageSave()', flushStart);
+  assert.ok(flushStart >= 0 && flushEnd > flushStart, 'the demo storage flush helper must exist');
+  const flushSource = html.slice(flushStart, flushEnd);
   const activityIds = Array.from({ length: 5000 }, (_, index) => 'evt-' + index);
   const pending = new Set(['evt-4999']);
   const attempted = [];
