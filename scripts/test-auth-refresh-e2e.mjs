@@ -147,6 +147,26 @@ assert.equal(recoveredWithoutTabStorage.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.te
 assert.equal(recoveredWithoutTabStorage.elements.get('signInScreen').hidden, true);
 assert.equal(recoveredWithoutTabStorage.injectedScripts.length, 1);
 
+// A stale tab identity cannot start the app if the durable origin store is
+// unavailable. This is distinct from a fresh sign-in and prevents an apparent
+// successful refresh that cannot be persisted for the next load.
+const seededTabOnlyStorage = memoryStorage([[SESSION_KEY, 'u2']]);
+const unavailablePersistentStorage = {
+  getItem() { throw new Error('persistent storage unavailable'); },
+  setItem() { throw new Error('persistent storage unavailable'); },
+  removeItem() {},
+  key() { return null; },
+  get length() { return 0; }
+};
+const tabOnlyRestore = makeGateEnvironment({
+  session: seededTabOnlyStorage,
+  local: unavailablePersistentStorage
+});
+assert.equal(tabOnlyRestore.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
+assert.equal(tabOnlyRestore.elements.get('signInScreen').hidden, false);
+assert.equal(tabOnlyRestore.injectedScripts.length, 0,
+  'A tab-only identity is not accepted when durable storage is unavailable.');
+
 // Explicit sign-out clears both the tab session and its recovery copy.
 await refreshed.window.TeamFollowUpAuth.signOut();
 assert.equal(refreshed.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
