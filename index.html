@@ -2127,22 +2127,35 @@ function readTables(includeActivity=false){
   return storedInTab||storedAsBackup;
  }
  function restoreLocalSessionUser(){
-  let saved='';
-  // An existing tab always wins. This keeps separate signed-in tabs independent.
-  try{saved=sessionStorage.getItem(LOCAL_SESSION_KEY)||sessionStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';}catch(error){}
-  if(validIds.includes(saved)){
-   persistLocalSessionUser(saved);
-   try{sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+  let saved='',legacySession=false,legacyBackup=false;
+  // A valid tab session is authoritative and must never be overwritten by the
+  // origin-wide recovery copy or rewrite that shared copy during a normal refresh.
+  try{
+   saved=sessionStorage.getItem(LOCAL_SESSION_KEY)||'';
+   if(validIds.includes(saved)){try{sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}return saved;}
+   saved=sessionStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
+   legacySession=validIds.includes(saved);
+  }catch(error){saved='';}
+  if(legacySession){
+   try{sessionStorage.setItem(LOCAL_SESSION_KEY,saved);sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+   try{if(localStorage.getItem(LOCAL_SESSION_KEY)!==saved)localStorage.setItem(LOCAL_SESSION_KEY,saved);localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
    return saved;
   }
-  // Recover when the tab-scoped entry is unavailable, including after a browser
-  // has discarded sessionStorage. This is one origin-wide last-session fallback.
-  try{saved=localStorage.getItem(LOCAL_SESSION_KEY)||localStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';}catch(error){}
+  // If this tab has no usable session, recover the most recently signed-in demo
+  // identity saved for the origin and recreate this tab's session copy.
+  try{
+   saved=localStorage.getItem(LOCAL_SESSION_KEY)||'';
+   if(!validIds.includes(saved)){
+    saved=localStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
+    legacyBackup=validIds.includes(saved);
+   }
+  }catch(error){saved='';}
   if(validIds.includes(saved)){
    try{sessionStorage.setItem(LOCAL_SESSION_KEY,saved);}catch(error){}
-   try{localStorage.setItem(LOCAL_SESSION_KEY,saved);}catch(error){}
+   if(legacyBackup){
+    try{localStorage.setItem(LOCAL_SESSION_KEY,saved);localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+   }
    try{sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
-   try{localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
    return saved;
   }
   return '';
