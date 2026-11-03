@@ -1,5 +1,12 @@
 # Application Release Notes
 
+## 3 November 2026 — Browser refresh session continuity
+
+- Kept demo sign-in identities tab-scoped so separate demo users in different tabs remain independent.
+- Added a per-tab persistent identity backup keyed by a tab marker retained across page reloads; a reload can restore the same demo user even when the tab-scoped storage entry needs to be repopulated.
+- Explicit sign-out removes only the current tab's identity backup and does not sign out another demo tab.
+- Added regression coverage that simulates a page reload, a second tab signing in as another user, and sign-out isolation.
+
 ## 3 November 2026 — Real-time Activity history
 
 - Extended the demo's cross-tab item-change handler to fetch Activity rows only for the changed item IDs, then merge those rows into the workspace Activity index and application-wide history cache.
