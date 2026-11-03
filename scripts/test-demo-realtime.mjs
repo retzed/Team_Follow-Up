@@ -213,6 +213,50 @@ function createHandlerContext(userId, loading = false) {
 }
 
 {
+  const activityIds = Array.from({ length: 5000 }, (_, index) => 'evt-' + index);
+  const pending = new Set(['evt-4999']);
+  const attempted = [];
+  const storage = new Map([['team-follow-up-builtin-dynamodb-tables-v4', JSON.stringify({
+    workItems: [], archiveItems: [], userProfiles: []
+  })]]);
+  const context = {
+    localStorage: {
+      getItem: key => storage.has(key) ? storage.get(key) : null,
+      setItem: (key, value) => storage.set(key, String(value)),
+      key: index => [...storage.keys()][index] || null,
+      get length() { return storage.size; },
+      removeItem: key => storage.delete(key)
+    },
+    TABLES_KEY: 'team-follow-up-builtin-dynamodb-tables-v4',
+    memoryTables: {
+      workItems: [], archiveItems: [], userProfiles: [],
+      activityEvents: activityIds.map(eventId => ({ eventId, itemId: 'task-1' }))
+    },
+    pendingRealtimeChange: null,
+    pendingBuiltinProfileIds: new Set(),
+    pendingActivityEventIds: pending,
+    tableStorageSaveTimer: 0,
+    activityTableLoaded: true,
+    activityTableDirty: true,
+    persistActivityEvent: event => {
+      attempted.push(event.eventId);
+      pending.delete(String(event.eventId));
+      return event;
+    },
+    clearTimeout() {},
+    clone: value => JSON.parse(JSON.stringify(value ?? null)),
+    publishBuiltinRealtimeChange() {},
+    console: { warn() {} }
+  };
+  vm.runInNewContext(flushSource + '\\nthis.flushTableStorageNow=flushTableStorageNow;', context);
+  context.flushTableStorageNow();
+  assert.deepEqual(attempted, ['evt-4999'],
+    'an item save must retry only Activity events whose individual localStorage write previously failed, not rewrite all 5,000 history rows');
+  assert.equal(context.activityTableDirty, false, 'successful pending-event retries clear the Activity dirty flag');
+}
+
+
+{
   const uniqueStart = html.indexOf('  const normalizeItemName=value=>');
   const uniqueEnd = html.indexOf('  if(method===', uniqueStart);
   assert.ok(uniqueStart >= 0 && uniqueEnd > uniqueStart, 'global item-name validation must exist in the built-in adapter');
