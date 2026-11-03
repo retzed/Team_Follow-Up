@@ -2354,21 +2354,20 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
    ]);
    state.modules={...auth};
    core.Amplify.configure({Auth:{Cognito:{userPoolId:cognito.userPoolId,userPoolClientId:cognito.userPoolClientId,loginWith:{username:true},allowGuestAccess:false}}});
-   const tokenStorage=utils.defaultStorage||utils.sessionStorage;
+   let tokenStorage=utils.defaultStorage||utils.sessionStorage;
    if(utils.defaultStorage&&window.sessionStorage){
     try{
-     const legacyKeys=[];
+     const legacyEntries=[];
      for(let i=0;i<window.sessionStorage.length;i++){
       const key=window.sessionStorage.key(i);
-      if(key&&key.startsWith('CognitoIdentityServiceProvider.'))legacyKeys.push(key);
+      if(key&&key.startsWith('CognitoIdentityServiceProvider.'))legacyEntries.push([key,window.sessionStorage.getItem(key)]);
      }
-     for(const key of legacyKeys){
-      const value=window.sessionStorage.getItem(key);
+     for(const [key,value] of legacyEntries){
       const stored=await tokenStorage.getItem(key);
       if(value!==null&&stored===null)await tokenStorage.setItem(key,value);
-      if(value!==null)window.sessionStorage.removeItem(key);
      }
-    }catch(storageMigrationError){console.warn('Could not migrate existing Cognito session storage; continuing with persistent token storage.',storageMigrationError);}
+     for(const [key,value] of legacyEntries)if(value!==null)window.sessionStorage.removeItem(key);
+    }catch(storageMigrationError){console.warn('Could not migrate existing Cognito session storage; retaining tab-scoped authentication storage for this session.',storageMigrationError);tokenStorage=utils.sessionStorage;}
    }
    cognitoAuth.cognitoUserPoolsTokenProvider.setKeyValueStorage(tokenStorage);
    $('signInSubmit').disabled=false;setError('');
