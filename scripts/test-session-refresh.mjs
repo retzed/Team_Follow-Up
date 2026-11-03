@@ -211,10 +211,11 @@ secondTabContext.persist('u3');
 assert.equal(secondTabContext.restore(), 'u3');
 assert.equal(refreshedTabContext.restore(), 'u2',
   'A valid user in another tab does not override this tab’s session.');
-
+assert.equal(sharedLocalStorage.getItem('team-follow-up-local-auth-v2'), 'u3',
+  'Restoring an existing tab does not overwrite the origin recovery copy from another tab sign-in.');
 
 // When tab storage is unavailable, the simple localStorage copy restores the
-// most recently persisted demo identity and repopulates the tab store.
+// most recently signed-in demo identity and repopulates the tab store.
 const recoveredTabStorage = createMemoryStorage();
 const recoveredTabContext = {
   ...firstTabContext,
