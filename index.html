@@ -4303,7 +4303,7 @@ async function handleDemoRealtimeChange(change){
  }
  const currentUserId=String(ui.actingUserId||rawCurrentUser()?.id||'');
  if(currentUserId&&assigneeIds.has(currentUserId)){
-  if(ui.accountAssignedLoading)demoAssignedRefreshPending=true;
+  if(ui.accountAssignedLoading){ui.accountAssignedLoaded=false;demoAssignedRefreshPending=true;}
   else if(ui.accountAssignedLoaded){
    const assigned=new Map((ui.accountAssignedRows||[]).map(row=>[String(row.id),row]));
    for(const id of itemIds)assigned.delete(id);
