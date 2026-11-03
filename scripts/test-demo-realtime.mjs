@@ -176,6 +176,23 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
 }
 
 {
+  const rootCreated = createHandlerContext('u2', false, [{
+    id: 'project-created-remotely', type: 'project', name: 'Created in another session', ownerId: 'u2', version: 1
+  }]);
+  await rootCreated.handlerContext.handleDemoRealtimeChange({
+    type: 'items.changed', changeId: 'parent-created-remotely',
+    itemId: 'project-created-remotely', itemIds: ['project-created-remotely'],
+    rootParentIds: ['project-created-remotely'], topLevelIds: ['project-created-remotely'],
+    parentIds: [], assigneeIds: ['u2'], deleted: false
+  });
+  assert.ok(rootCreated.data.parents.some(row => row.id === 'project-created-remotely'),
+    'a parent created in another active demo tab is inserted into this workspace');
+  assert.ok(rootCreated.ui.accountAssignedRows.some(row => row.id === 'project-created-remotely'),
+    'the new parent appears in the current assignee profile when assigned to that user');
+  assert.ok(rootCreated.calls.parentRenders > 0, 'a new parent immediately refreshes the visible parent list');
+}
+
+{
   const pendingRefresh = createHandlerContext('u2', true, [
     { id: 'task-2', type: 'task', rootParentId: 'project-1', ownerId: 'u2', version: 1 }
   ]);
