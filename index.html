@@ -2110,137 +2110,44 @@ function readTables(includeActivity=false){
  const cognito=cfg.cognito||{};
  const validIds=['u1','u2','u3','u4','u5','u6','root'];
  const state={modules:null,authMode:null,mode:'signIn',pendingUser:'',nextStep:null,appStarted:false,submitting:false};
- const LOCAL_SESSION_KEY='team-follow-up-local-auth-v1';
- const LOCAL_TAB_NAME_MARKER='|__TEAM_FOLLOW_UP_LOCAL_TAB_V1__:';
- const LOCAL_USER_NAME_MARKER='|__TEAM_FOLLOW_UP_LOCAL_USER_V1__:';
- const LOCAL_HISTORY_TAB_ID_KEY='__TEAM_FOLLOW_UP_LOCAL_TAB_ID_V1__';
- const LOCAL_HISTORY_USER_ID_KEY='__TEAM_FOLLOW_UP_LOCAL_USER_ID_V1__';
- const LOCAL_URL_TAB_PARAM='__team_follow_up_tab';
- function validLocalTabId(value){return /^[A-Za-z0-9_-]{8,}$/.test(String(value||''));}
- function readWindowNameMarker(marker){
-  try{
-   const name=String(window.name||''),index=name.lastIndexOf(marker);
-   if(index<0)return '';
-   const start=index+marker.length,end=name.indexOf('|',start);
-   return name.slice(start,end<0?name.length:end);
-  }catch(error){return '';}
- }
- function writeWindowNameMarker(marker,value){
-  try{
-   let name=String(window.name||''),index=name.lastIndexOf(marker);
-   if(index>=0){
-    const start=index+marker.length,end=name.indexOf('|',start);
-    name=name.slice(0,index)+name.slice(end<0?name.length:end);
-   }
-   window.name=name+marker+String(value||'');
-  }catch(error){console.warn('The browser tab name could not retain the demo session marker.',error);}
- }
- function removeWindowNameMarker(marker){
-  try{
-   let name=String(window.name||''),index=name.lastIndexOf(marker);
-   if(index<0)return;
-   const start=index+marker.length,end=name.indexOf('|',start);
-   window.name=name.slice(0,index)+name.slice(end<0?name.length:end);
-  }catch(error){}
- }
- function readUrlTabId(){
-  try{
-   const href=String(window.location.href||''),hashIndex=href.indexOf('#');
-   if(hashIndex<0)return '';
-   const entry=href.slice(hashIndex+1).split('&').find(part=>part.startsWith(LOCAL_URL_TAB_PARAM+'='));
-   const value=entry?decodeURIComponent(entry.slice(LOCAL_URL_TAB_PARAM.length+1)):'';
-   return validLocalTabId(value)?value:'';
-  }catch(error){return '';}
- }
- function writeUrlTabId(tabId){
-  try{
-   const href=String(window.location.href||''),hashIndex=href.indexOf('#');
-   const base=hashIndex>=0?href.slice(0,hashIndex):href;
-   const fragment=hashIndex>=0?href.slice(hashIndex+1):'';
-   const parts=fragment?fragment.split('&').filter(part=>part&&!part.startsWith(LOCAL_URL_TAB_PARAM+'=')):[];
-   if(validLocalTabId(tabId))parts.push(LOCAL_URL_TAB_PARAM+'='+encodeURIComponent(tabId));
-   const nextUrl=base+(parts.length?'#'+parts.join('&'):'');
-   if(nextUrl!==href)window.history?.replaceState?.(window.history?.state??null,document.title,nextUrl);
-  }catch(error){console.warn('The browser URL could not retain the demo tab identifier; sessionStorage, history state and window.name remain available.',error);}
- }
- function removeUrlTabId(){
-  try{
-   const href=String(window.location.href||''),hashIndex=href.indexOf('#');
-   if(hashIndex<0)return;
-   const base=href.slice(0,hashIndex),fragment=href.slice(hashIndex+1);
-   const parts=fragment.split('&').filter(part=>part&&!part.startsWith(LOCAL_URL_TAB_PARAM+'='));
-   const nextUrl=base+(parts.length?'#'+parts.join('&'):'');
-   if(nextUrl!==href)window.history?.replaceState?.(window.history?.state??null,document.title,nextUrl);
-  }catch(error){}
- }
- function localSessionTabStorageKey(){
-  let tabId='';
-  try{
-   const historyState=window.history?.state;
-   if(historyState&&typeof historyState==='object')tabId=String(historyState[LOCAL_HISTORY_TAB_ID_KEY]||'');
-  }catch(error){}
-  const namedTabId=readWindowNameMarker(LOCAL_TAB_NAME_MARKER);
-  const urlTabId=readUrlTabId();
-  if(!validLocalTabId(tabId)&&validLocalTabId(urlTabId))tabId=urlTabId;
-  if(!validLocalTabId(tabId)&&validLocalTabId(namedTabId))tabId=namedTabId;
-  if(!validLocalTabId(tabId)){
-   tabId=String(window.crypto?.randomUUID?.()||('tab_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2)));
-  }
-  try{
-   const historyState=window.history?.state;
-   const nextState=historyState&&typeof historyState==='object'?{...historyState}:{};
-   if(nextState[LOCAL_HISTORY_TAB_ID_KEY]!==tabId){
-    nextState[LOCAL_HISTORY_TAB_ID_KEY]=tabId;
-    window.history?.replaceState?.(nextState,document.title,window.location.href);
-   }
-  }catch(error){console.warn('The browser history entry could not retain the demo tab identifier; window.name and sessionStorage remain available.',error);}
-  if(namedTabId!==tabId)writeWindowNameMarker(LOCAL_TAB_NAME_MARKER,tabId);
-  if(urlTabId!==tabId)writeUrlTabId(tabId);
-  return LOCAL_SESSION_KEY+':'+tabId;
- }
+ const LOCAL_SESSION_KEY='team-follow-up-local-auth-v2';
+ const LEGACY_LOCAL_SESSION_KEY='team-follow-up-local-auth-v1';
  function persistLocalSessionUser(teamUserId){
   const userId=String(teamUserId||'');
-  if(!validIds.includes(userId))return;
-  try{sessionStorage.setItem(LOCAL_SESSION_KEY,userId);}catch(error){console.warn('The demo identity could not be stored in this tab session.',error);}
-  try{localStorage.setItem(localSessionTabStorageKey(),userId);}catch(error){console.warn('The demo identity could not be backed up for this browser tab.',error);}
-  try{
-   const historyState=window.history?.state;
-   const nextState=historyState&&typeof historyState==='object'?{...historyState}:{};
-   nextState[LOCAL_HISTORY_USER_ID_KEY]=userId;
-   window.history?.replaceState?.(nextState,document.title,window.location.href);
-  }catch(error){console.warn('The browser history entry could not retain the demo identity; browser storage and window.name remain available.',error);}
-  writeWindowNameMarker(LOCAL_USER_NAME_MARKER,userId);
+  if(!validIds.includes(userId))return false;
+  let storedInTab=false,storedAsBackup=false;
+  try{sessionStorage.setItem(LOCAL_SESSION_KEY,userId);storedInTab=true;}
+  catch(error){console.warn('The demo identity could not be stored in this tab session.',error);}
+  try{localStorage.setItem(LOCAL_SESSION_KEY,userId);storedAsBackup=true;}
+  catch(error){console.warn('The demo identity could not be stored in the browser recovery copy.',error);}
+  return storedInTab||storedAsBackup;
  }
  function restoreLocalSessionUser(){
   let saved='';
-  try{saved=sessionStorage.getItem(LOCAL_SESSION_KEY)||'';}catch(error){}
-  if(validIds.includes(saved)){persistLocalSessionUser(saved);return saved;}
-  try{saved=localStorage.getItem(localSessionTabStorageKey())||'';}catch(error){}
-  if(validIds.includes(saved)){persistLocalSessionUser(saved);return saved;}
-  try{
-   const historyState=window.history?.state;
-   saved=historyState&&typeof historyState==='object'?String(historyState[LOCAL_HISTORY_USER_ID_KEY]||''):'';
-  }catch(error){saved='';}
-  if(validIds.includes(saved)){persistLocalSessionUser(saved);return saved;}
-  saved=readWindowNameMarker(LOCAL_USER_NAME_MARKER);
-  if(validIds.includes(saved)){persistLocalSessionUser(saved);return saved;}
+  // An existing tab always wins. This keeps separate signed-in tabs independent.
+  try{saved=sessionStorage.getItem(LOCAL_SESSION_KEY)||sessionStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';}catch(error){}
+  if(validIds.includes(saved)){
+   persistLocalSessionUser(saved);
+   try{sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+   return saved;
+  }
+  // Recover when the tab-scoped entry is unavailable, including after a browser
+  // has discarded sessionStorage. This is one origin-wide last-session fallback.
+  try{saved=localStorage.getItem(LOCAL_SESSION_KEY)||localStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';}catch(error){}
+  if(validIds.includes(saved)){
+   try{sessionStorage.setItem(LOCAL_SESSION_KEY,saved);}catch(error){}
+   try{localStorage.setItem(LOCAL_SESSION_KEY,saved);}catch(error){}
+   try{sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+   try{localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+   return saved;
+  }
   return '';
  }
  function clearLocalSessionUser(){
-  const storageKey=localSessionTabStorageKey();
-  try{sessionStorage.removeItem(LOCAL_SESSION_KEY);}catch(error){}
-  try{localStorage.removeItem(storageKey);}catch(error){}
-  try{
-   const historyState=window.history?.state;
-   if(historyState&&typeof historyState==='object'){
-    const nextState={...historyState};
-    delete nextState[LOCAL_HISTORY_TAB_ID_KEY];delete nextState[LOCAL_HISTORY_USER_ID_KEY];
-    window.history.replaceState(Object.keys(nextState).length?nextState:null,document.title,window.location.href);
-   }
-  }catch(error){}
-  removeWindowNameMarker(LOCAL_USER_NAME_MARKER);
-  removeWindowNameMarker(LOCAL_TAB_NAME_MARKER);
-  removeUrlTabId();
+  for(const storage of [sessionStorage,localStorage]){
+   try{storage.removeItem(LOCAL_SESSION_KEY);}catch(error){}
+   try{storage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+  }
  }
  screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;
  const ar=root.lang==='ar';
@@ -2518,7 +2425,7 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
   }
   /* A configured Cognito pool always takes precedence. The local fallback is never attempted
      when Cognito is configured, even if Cognito authentication or the SDK fails. */
-  state.authMode='cognito';try{sessionStorage.removeItem(LOCAL_SESSION_KEY);}catch(e){}
+  state.authMode='cognito';for(const storage of [sessionStorage,localStorage]){try{storage.removeItem(LOCAL_SESSION_KEY);storage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(e){}}
   setError(copy.loading);
   try{
    const version='6.20.0';
