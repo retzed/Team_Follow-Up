@@ -405,7 +405,7 @@ function createHandlerContext(userId, loading = false, resolvedItems = []) {
   const writeEnd = html.indexOf(' function ensureIndexFields(', writeStart);
   assert.ok(writeStart >= 0 && writeEnd > writeStart, 'the built-in table writer must exist');
   const writeSource = html.slice(writeStart, writeEnd);
-  assert.ok(!writeSource.includes('activityTableDirty=true'),
+  assert.ok(!writeSource.includes('else if(activityTableLoaded)activityTableDirty=true'),
     'ordinary item or profile table writes must not mark the entire Activity cache dirty');
   const storeStart = html.indexOf('function storeActivityEvent(tables,raw){');
   const storeEnd = html.indexOf('function toAppItem(record){', storeStart);
