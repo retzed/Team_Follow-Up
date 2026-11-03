@@ -94,70 +94,143 @@ const handlerEnd = html.indexOf('async function togglePinnedItem(itemId){', hand
 assert.ok(handlerStart >= 0 && handlerEnd > handlerStart, 'the demo real-time view handler must exist');
 const handlerSource = html.slice(handlerStart, handlerEnd);
 
-function createHandlerContext(userId, loading = false) {
-  const calls = { assigned: 0 };
+function createHandlerContext(userId, loading = false, resolvedItems = []) {
+  const calls = { assigned: 0, roots: 0, parentRenders: 0, detailRenders: 0, accountRenders: 0, resolved: [] };
   const ui = {
     actingUserId: userId,
     page: 'account',
     accountTab: 'assigned',
     accountAssignedLoaded: true,
     accountAssignedLoading: loading,
+    accountAssignedRows: userId === 'u1' ? [{ id: 'task-1', type: 'task', ownerId: 'u1' }] : [],
+    accountPinnedLoaded: true,
     accountPinnedRows: [],
     modal: null,
-    selectedParentId: ''
+    selectedParentId: 'project-1'
+  };
+  const data = {
+    parents: [{ id: 'project-1', type: 'project', name: 'Project', ownerId: 'u1' }],
+    children: []
+  };
+  const api = {
+    mode: 'builtin',
+    resolveItems: async ids => {
+      calls.resolved.push([...ids]);
+      return { items: resolvedItems.filter(item => ids.includes(String(item.id))) };
+    }
   };
   const handlerContext = {
-    window: { TeamFollowUpDataApi: { mode: 'builtin', resolveItems: async () => ({ items: [] }) } },
+    window: { TeamFollowUpDataApi: api },
     ui,
-    data: { parents: [], children: [] },
+    data,
+    lastApiSnapshot: { parents: data.parents.map(row => ({ ...row })), children: [], activity: [] },
+    dataLoadState: { childrenLoaded: new Set(['project-1']) },
     rawCurrentUser: () => ({ id: userId }),
-    rootParent: () => null,
+    rootParent: row => row?.rootParentId ? data.parents.find(parent => parent.id === row.rootParentId) || { id: row.rootParentId } : null,
     loadAccountAssignedItems: () => { calls.assigned += 1; return Promise.resolve(); },
     loadAccountPinnedItems: () => Promise.resolve(),
-    renderParentList: () => {},
-    renderDetail: () => {},
-    renderAccountPage: () => {},
-    ensureRootChildrenLoaded: async () => {},
+    renderParentList: () => { calls.parentRenders += 1; },
+    renderDetail: () => { calls.detailRenders += 1; },
+    renderAccountPage: () => { calls.accountRenders += 1; },
+    ensureRootChildrenLoaded: async () => { calls.roots += 1; },
     refreshActivityFor: async () => {},
     refreshApplicationHistory: () => {},
-    allItem: () => null,
+    allItem: id => [...data.parents, ...data.children].find(row => String(row.id) === String(id)) || null,
     toAppItem: row => row,
     invalidateHierarchyIndex: () => {},
     console: { warn() {} },
     Promise, Set, Map, String, Array
   };
-  vm.runInNewContext('let demoAssignedRefreshPending=false;' + String.fromCharCode(10) + handlerSource + String.fromCharCode(10) + 'this.handleDemoRealtimeChange=handleDemoRealtimeChange;this.hasPendingAssignedRefresh=()=>demoAssignedRefreshPending;', handlerContext);
-  return { handlerContext, calls, ui };
+  vm.runInNewContext(
+    'let demoAssignedRefreshPending=false;' + String.fromCharCode(10) + handlerSource + String.fromCharCode(10) +
+    'this.handleDemoRealtimeChange=handleDemoRealtimeChange;' +
+    'this.queueDemoRealtimeChange=queueDemoRealtimeChange;' +
+    'this.hasPendingAssignedRefresh=()=>demoAssignedRefreshPending;',
+    handlerContext
+  );
+  return { handlerContext, calls, ui, data, api };
 }
 
 {
-  const change = { type: 'items.changed', changeId: 'assignment-u1-u2', itemId: 'task-1', itemIds: ['task-1'], assigneeIds: ['u1', 'u2'] };
-  const oldAssignee = createHandlerContext('u1');
-  const newAssignee = createHandlerContext('u2');
-  const unrelatedUser = createHandlerContext('u3');
+  const change = {
+    type: 'items.changed', changeId: 'assignment-u1-u2', itemId: 'task-1',
+    itemIds: ['task-1'], rootParentIds: ['project-1'], assigneeIds: ['u1', 'u2']
+  };
+  const updated = { id: 'task-1', type: 'task', name: 'Assigned task', rootParentId: 'project-1', parentId: 'project-1', ownerId: 'u2', version: 2 };
+  const oldAssignee = createHandlerContext('u1', false, [updated]);
+  const newAssignee = createHandlerContext('u2', false, [updated]);
+  const unrelatedUser = createHandlerContext('u3', false, [updated]);
 
   await oldAssignee.handlerContext.handleDemoRealtimeChange(change);
   await newAssignee.handlerContext.handleDemoRealtimeChange(change);
   await unrelatedUser.handlerContext.handleDemoRealtimeChange(change);
 
-  assert.equal(oldAssignee.ui.accountAssignedLoaded, false, 'the previous assignee invalidates its Assigned Items view');
-  assert.equal(newAssignee.ui.accountAssignedLoaded, false, 'the new assignee invalidates its Assigned Items view');
-  assert.equal(oldAssignee.calls.assigned, 1, 'the previous assignee refreshes an open Assigned Items tab');
-  assert.equal(newAssignee.calls.assigned, 1, 'the new assignee refreshes an open Assigned Items tab');
+  assert.equal(oldAssignee.ui.accountAssignedLoaded, true, 'an already-loaded previous-assignee view is updated without an extra fetch');
+  assert.equal(newAssignee.ui.accountAssignedLoaded, true, 'an already-loaded new-assignee view stays authoritative');
+  assert.equal(oldAssignee.ui.accountAssignedRows.length, 0, 'the previous assignee loses the reassigned item immediately');
+  assert.equal(newAssignee.ui.accountAssignedRows.length, 1, 'the new assignee receives the exact updated item immediately');
+  assert.equal(newAssignee.ui.accountAssignedRows[0].version, 2);
+  assert.equal(oldAssignee.calls.assigned, 0, 'the previous assignee does not issue a stale secondary index reload');
+  assert.equal(newAssignee.calls.assigned, 0, 'the new assignee does not issue a stale secondary index reload');
   assert.equal(unrelatedUser.calls.assigned, 0, 'unrelated demo users do not reload Assigned Items');
 }
 
 {
-  const pendingRefresh = createHandlerContext('u2', true);
+  const pendingRefresh = createHandlerContext('u2', true, [
+    { id: 'task-2', type: 'task', rootParentId: 'project-1', ownerId: 'u2', version: 1 }
+  ]);
   await pendingRefresh.handlerContext.handleDemoRealtimeChange({
     type: 'items.changed', changeId: 'assignment-while-loading', itemId: 'task-2',
-    itemIds: ['task-2'], assigneeIds: ['u1', 'u2']
+    itemIds: ['task-2'], rootParentIds: ['project-1'], assigneeIds: ['u1', 'u2']
   });
   assert.equal(pendingRefresh.ui.accountAssignedLoaded, false, 'a change arriving during load invalidates the in-flight view');
   assert.equal(pendingRefresh.handlerContext.hasPendingAssignedRefresh(), true, 'a change arriving during load schedules one follow-up refresh');
   assert.equal(pendingRefresh.calls.assigned, 0, 'the in-flight request is not duplicated immediately');
 }
 
+{
+  const queued = createHandlerContext('u2');
+  let releaseFirst;
+  let startedFirst;
+  const firstStarted = new Promise(resolve => { startedFirst = resolve; });
+  let calls = 0;
+  const firstResult = new Promise(resolve => { releaseFirst = resolve; });
+  queued.api.resolveItems = async ids => {
+    calls++;
+    queued.calls.resolved.push([...ids]);
+    if (calls === 1) { startedFirst(); return firstResult; }
+    return { items: [{
+      id: 'task-new', type: 'task', name: 'Edited after create',
+      parentId: 'project-1', rootParentId: 'project-1', ownerId: 'u2', version: 2
+    }] };
+  };
+  const createdChange = {
+    type: 'items.changed', changeId: 'item-created',
+    itemId: 'task-new', itemIds: ['task-new'], rootParentIds: ['project-1'],
+    assigneeIds: ['u2'], deleted: false
+  };
+  const editedChange = {
+    type: 'items.changed', changeId: 'item-edited',
+    itemId: 'task-new', itemIds: ['task-new'], rootParentIds: ['project-1'],
+    assigneeIds: ['u2'], deleted: false
+  };
+  const first = queued.handlerContext.queueDemoRealtimeChange(createdChange);
+  const second = queued.handlerContext.queueDemoRealtimeChange(editedChange);
+  await firstStarted;
+  assert.equal(calls, 1, 'the edit notification waits until the create notification has been reconciled');
+  releaseFirst({ items: [{
+    id: 'task-new', type: 'task', name: 'Created item',
+    parentId: 'project-1', rootParentId: 'project-1', ownerId: 'u2', version: 1
+  }] });
+  await first;
+  await second;
+  assert.equal(calls, 2);
+  assert.equal(queued.data.children.length, 1, 'the item is retained as one record after create followed by edit');
+  assert.equal(queued.data.children[0].name, 'Edited after create', 'the later edit cannot be overwritten by a slower create refresh');
+  assert.equal(queued.data.children[0].version, 2);
+  assert.equal(queued.ui.accountAssignedRows[0].version, 2, 'Assigned Items also retains the latest committed version');
+  assert.equal(queued.calls.roots, 0, 'real-time item changes do not replace the subtree with a delayed query');
+}
 
 {
   const flushStart = html.indexOf(' function flushTableStorageNow(){');
@@ -358,7 +431,7 @@ assert.ok(html.includes('function subscribeRealtimeChanges(listener)'),
   'the in-app view layer subscribes to normalized change hints.');
 assert.ok(html.includes("window.TeamFollowUpDataApi=Object.freeze({mode,tableNames:names,request,bootstrap,commitSnapshot,commitItemMutation,subscribeRealtimeChanges,"),
   'the built-in data adapter exports the change subscription and incremental item writer.');
-assert.ok(html.includes("window.__TEAM_FOLLOW_UP_DEMO_REALTIME_UNSUBSCRIBE=window.TeamFollowUpDataApi?.mode==='api'?null:window.TeamFollowUpDataApi?.subscribeRealtimeChanges?.(change=>{void handleDemoRealtimeChange(change);});"),
+assert.ok(html.includes("window.__TEAM_FOLLOW_UP_DEMO_REALTIME_UNSUBSCRIBE=window.TeamFollowUpDataApi?.mode==='api'?null:window.TeamFollowUpDataApi?.subscribeRealtimeChanges?.(change=>{void queueDemoRealtimeChange(change);});"),
   'the demo workspace subscribes to cross-tab change hints only in built-in mode.');
 assert.ok(html.includes('if(demoAssignedRefreshPending&&ui.page===\'account\'&&ui.accountTab===\'assigned\')'),
   'an event arriving during an Assigned Items request schedules a follow-up refresh.');
