@@ -159,12 +159,16 @@ if (html.includes('function initializeLocalAuth(){')) {
   const localAuthSource = html.slice(localAuthStart, localAuthEnd);
   const sharedDemoStorage = createMemoryStorage();
   const tabOneSession = createMemoryStorage();
+  const tabOneWindow = { name: '', history: null, location: { href: 'https://retzed.github.io/Team_Follow-Up/' }, crypto: { randomUUID: () => 'tab-one-identity' } };
   const tabOneHistory = {
     state: null,
     lastUrl: '',
-    replaceState(nextState, _title, url) { this.state = nextState; if (url) this.lastUrl = url; }
+    replaceState(nextState, _title, url) {
+      this.state = nextState;
+      if (url) { this.lastUrl = url; tabOneWindow.location.href = url; }
+    }
   };
-  const tabOneWindow = { name: '', history: tabOneHistory, location: { href: 'https://retzed.github.io/Team_Follow-Up/' }, crypto: { randomUUID: () => 'tab-one-identity' } };
+  tabOneWindow.history = tabOneHistory;
   const baseTabContext = {
     validIds: ['u1','u2','u3','u4','u5','u6','root'],
     LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
@@ -232,11 +236,16 @@ if (html.includes('function initializeLocalAuth(){')) {
   // while window.name is deliberately blanked to verify history.state is an independent key source.
   const reloadedTabSession = createMemoryStorage();
   for (const [key,value] of tabOneSession.map) reloadedTabSession.setItem(key,value);
+  const reloadedTabWindow = { name: '', history: null, location: { href: tabOneWindow.location.href }, crypto: { randomUUID: () => 'unused-reload-id' } };
   const reloadedTabHistory = {
     state: structuredClone(tabOneHistory.state),
-    replaceState(nextState) { this.state = nextState; }
+    lastUrl: reloadedTabWindow.location.href,
+    replaceState(nextState, _title, url) {
+      this.state = nextState;
+      if (url) { this.lastUrl = url; reloadedTabWindow.location.href = url; }
+    }
   };
-  const reloadedTabWindow = { name: '', history: reloadedTabHistory, location: { href: 'https://retzed.github.io/Team_Follow-Up/' }, crypto: { randomUUID: () => 'unused-reload-id' } };
+  reloadedTabWindow.history = reloadedTabHistory;
   const reloadedTabContext = {
     ...baseTabContext, window: reloadedTabWindow, sessionStorage: reloadedTabSession, localStorage: sharedDemoStorage
   };
