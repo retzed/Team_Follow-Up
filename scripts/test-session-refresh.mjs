@@ -168,6 +168,7 @@ if (html.includes('function initializeLocalAuth(){')) {
     validIds: ['u1','u2','u3','u4','u5','u6','root'],
     LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
     LOCAL_TAB_NAME_MARKER: '|__TEAM_FOLLOW_UP_LOCAL_TAB_V1__:',
+    LOCAL_USER_NAME_MARKER: '|__TEAM_FOLLOW_UP_LOCAL_USER_V1__:',
     window: tabOneWindow, sessionStorage: tabOneSession, localStorage: sharedDemoStorage,
     document: { title: 'Team Follow-Up' }, String, Date, Math, console
   };
