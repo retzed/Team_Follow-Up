@@ -152,7 +152,7 @@ if (html.includes('function initializeLocalAuth(){')) {
     'Demo tabs do not share one global localStorage identity key.');
 
   const localAuthStart = html.indexOf('function localSessionTabStorageKey(){');
-  const localAuthEnd = html.indexOf('\n function initializeLocalAuth(){', localAuthStart);
+  const localAuthEnd = html.indexOf('\n screen.hidden=false;screen.lang=root.lang', localAuthStart);
   assert.ok(localAuthStart >= 0 && localAuthEnd > localAuthStart, 'Tab-scoped demo session helpers must be extractable for isolated regression tests.');
   const localAuthSource = html.slice(localAuthStart, localAuthEnd);
   const sharedDemoStorage = createMemoryStorage();
