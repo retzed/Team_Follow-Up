@@ -157,8 +157,13 @@ assert.ok(localAuthSource.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)') 
   'An existing tab session is checked first, with an origin-local recovery copy as fallback.');
 assert.ok(html.includes("const saved=restoreLocalSessionUser();if(validIds.includes(saved)){finishVisualAuth(makeLocalContext(saved,localTeamUsers.find(u=>u.id===saved)?.aliases[0]||''));return;}"),
   'Local authentication restores the saved user before showing the credential form.');
-assert.ok(html.indexOf('persistLocalSessionUser(teamUserId);') < html.indexOf('finishVisualAuth(makeLocalContext(teamUserId,username))'),
-  'A successful local sign-in is persisted before the application UI is started.');
+assert.ok(html.includes('if(!persistLocalSessionUser(teamUserId)){'),
+  'The demo refuses to enter the application unless at least one browser storage mechanism accepts the session.');
+assert.ok(html.indexOf('if(!persistLocalSessionUser(teamUserId)){') < html.indexOf('finishVisualAuth(makeLocalContext(teamUserId,username))'),
+  'A successful local sign-in is persisted and verified before the application UI is started.');
+assert.ok(html.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)===userId') &&
+          html.includes('localStorage.getItem(LOCAL_SESSION_KEY)===userId'),
+  'Session writes are read back before being treated as durable.');
 assert.ok(html.includes("if(cfg.localAuth?.enabled===true&&!hasCognitoConfigurationAttempt()){initializeLocalAuth();return;}"),
   'The public demo selects local-session restoration before entering the Cognito flow.');
 
