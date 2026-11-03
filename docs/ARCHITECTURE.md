@@ -17,7 +17,7 @@ flowchart TD
     Context --> UI[Team Follow-Up UI]
     UI --> Adapter[TeamFollowUpDataApi]
     Adapter --> LocalStore[(Browser localStorage)]
-    Browser --> Session[(sessionStorage: active demo identity)]
+    Browser --> Session[(sessionStorage: active tab identity)]\n    Browser --> Recovery[(localStorage: last-session recovery copy)]
     LocalStore --> Items[Work items and hierarchy]
     LocalStore --> Activity[Activity events]
     LocalStore --> Profiles[Built-in team profiles]
@@ -106,7 +106,7 @@ Regression tests cover the event-propagation boundary, cyclic and deep hierarchy
 ## Persistence and isolation
 
 - Workspaces persist in `localStorage` for the site's origin and browser profile.
-- Demo sign-in state is kept in `sessionStorage` for the active tab.
+- An existing tab restores its own demo identity from `sessionStorage` first. A same-origin `localStorage` recovery copy is used only when that tab entry is missing; a new tab without a session can inherit the last saved demo identity.
 - Demo usernames share the same workspace when used in the same browser profile because they are views of one local demonstration dataset.
 - Other browsers, devices, profiles, and private windows have independent data.
 - Clearing site storage or using **Reset demo data** removes or resets the local demonstration workspace.
