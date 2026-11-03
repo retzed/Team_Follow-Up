@@ -8,7 +8,9 @@ const helperEnd = html.indexOf('\nconst activityRefreshRequests=new Map();', hel
 assert.ok(helperStart >= 0 && helperEnd > helperStart, 'User-specific view-state helpers must exist.');
 const helperSource = html.slice(helperStart, helperEnd);
 
-assert.match(html, /const tokenStorage=utils\.defaultStorage\|\|\{[\s\S]*?window\.localStorage\.getItem\(key\)/, 'Cognito tokens use persistent browser storage, including a localStorage adapter when Amplify default storage is unavailable.');
+assert.match(html, /const tokenStorage=\{\s*getItem:async key=>window\.localStorage\.getItem\(key\)/, 'Cognito tokens are stored explicitly through the browser localStorage adapter.');
+assert.doesNotMatch(html, /utils\.defaultStorage/, 'The AWS build does not silently inherit an SDK storage fallback that may be process-local.');
+assert.ok(html.includes('tokenStorageProbeKey') && html.includes('tokenStorageProbeValue') && html.includes('Browser localStorage did not retain the Cognito storage probe.'), 'Cognito startup verifies that browser storage can retain and read a value before session restoration.');
 assert.match(html, /CognitoIdentityServiceProvider\./, 'Existing sessionStorage Cognito tokens are migrated to persistent storage.');
 assert.doesNotMatch(html, /tokenStorage=utils\.sessionStorage/, 'A failed legacy-token migration cannot silently downgrade the active session to tab-scoped storage.');
 assert.ok(html.includes('migrationVerified') && html.includes('stored!==value'), 'Legacy Cognito tokens are removed from sessionStorage only after persistent-storage verification.');
@@ -144,13 +146,60 @@ assert.equal(storage.getItem('team-follow-up-view-state-v1:u2'), null, 'Explicit
 assert.equal(persistentStorage.getItem('team-follow-up-view-state-v1:u2'), null, 'Explicit sign-out also clears the persistent view-state backup.');
 
 if (html.includes('function initializeLocalAuth(){')) {
-  assert.match(html, /sessionStorage\.getItem\(LOCAL_SESSION_KEY\)/,
-    'The local demo restores its tab-scoped demo identity after a page refresh.');
-  assert.match(html, /sessionStorage\.setItem\(LOCAL_SESSION_KEY,teamUserId\)/,
-    'The local demo persists the active demo identity in the tab session.');
-  assert.match(html, /sessionStorage\.removeItem\(LOCAL_SESSION_KEY\)/,
-    'Explicit demo sign-out removes the tab-scoped demo identity.');
+  assert.ok(html.includes('function localSessionTabStorageKey(){') && html.includes('function restoreLocalSessionUser(){') && html.includes('function persistLocalSessionUser(teamUserId)') && html.includes('function clearLocalSessionUser()'),
+    'The demo identity uses a dedicated tab-scoped persistence helper.');
   assert.doesNotMatch(html, /localStorage\.(?:getItem|setItem|removeItem)\(LOCAL_SESSION_KEY\)/,
-    'Demo users in separate tabs retain independent test identities.');
+    'Demo tabs do not share one global localStorage identity key.');
+
+  const localAuthStart = html.indexOf('function localSessionTabStorageKey(){');
+  const localAuthEnd = html.indexOf('\n function initializeLocalAuth(){', localAuthStart);
+  assert.ok(localAuthStart >= 0 && localAuthEnd > localAuthStart, 'Tab-scoped demo session helpers must be extractable for isolated regression tests.');
+  const localAuthSource = html.slice(localAuthStart, localAuthEnd);
+  const sharedDemoStorage = createMemoryStorage();
+  const tabOneSession = createMemoryStorage();
+  const tabOneWindow = { name: '', crypto: { randomUUID: () => 'tab-one-identity' } };
+  const tabOneContext = {
+    validIds: ['u1','u2','u3','u4','u5','u6','root'],
+    LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
+    LOCAL_TAB_NAME_MARKER: '|__TEAM_FOLLOW_UP_LOCAL_TAB_V1__:',
+    window: tabOneWindow, sessionStorage: tabOneSession, localStorage: sharedDemoStorage,
+    String, Date, Math
+  };
+  vm.runInNewContext(localAuthSource + '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;this.key=localSessionTabStorageKey;', tabOneContext);
+  tabOneContext.persist('u2');
+  const tabOneKey = tabOneContext.key();
+  assert.equal(tabOneSession.getItem('team-follow-up-local-auth-v1'), 'u2', 'The demo identity remains available in its browser tab session.');
+  assert.equal(sharedDemoStorage.getItem(tabOneKey), 'u2', 'The demo identity has a persistent backup scoped to that tab.');
+
+  const reloadedTabSession = createMemoryStorage();
+  const reloadedTabWindow = { name: tabOneWindow.name, crypto: { randomUUID: () => 'unused-reload-id' } };
+  const reloadedTabContext = {
+    validIds: ['u1','u2','u3','u4','u5','u6','root'],
+    LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
+    LOCAL_TAB_NAME_MARKER: '|__TEAM_FOLLOW_UP_LOCAL_TAB_V1__:',
+    window: reloadedTabWindow, sessionStorage: reloadedTabSession, localStorage: sharedDemoStorage,
+    String, Date, Math
+  };
+  vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;this.key=localSessionTabStorageKey;', reloadedTabContext);
+  assert.equal(reloadedTabContext.restore(), 'u2', 'A page reload restores the same demo identity even when tab session storage must be reconstructed.');
+  assert.equal(reloadedTabSession.getItem('team-follow-up-local-auth-v1'), 'u2', 'Restoration repopulates the new tab-session store.');
+
+  const tabTwoSession = createMemoryStorage();
+  const tabTwoWindow = { name: '', crypto: { randomUUID: () => 'tab-two-identity' } };
+  const tabTwoContext = {
+    validIds: ['u1','u2','u3','u4','u5','u6','root'],
+    LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
+    LOCAL_TAB_NAME_MARKER: '|__TEAM_FOLLOW_UP_LOCAL_TAB_V1__:',
+    window: tabTwoWindow, sessionStorage: tabTwoSession, localStorage: sharedDemoStorage,
+    String, Date, Math
+  };
+  vm.runInNewContext(localAuthSource + '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;this.key=localSessionTabStorageKey;', tabTwoContext);
+  assert.equal(tabTwoContext.restore(), '', 'A new independent tab does not inherit another tab’s demo identity.');
+  tabTwoContext.persist('u3');
+  assert.notEqual(tabTwoContext.key(), tabOneKey, 'Each tab stores its demo identity under a different key.');
+  assert.equal(reloadedTabContext.restore(), 'u2', 'Signing in as another demo user in a second tab does not overwrite the first tab identity.');
+  reloadedTabContext.clear();
+  assert.equal(sharedDemoStorage.getItem(tabOneKey), null, 'Explicit sign-out removes only the current tab identity backup.');
+  assert.equal(sharedDemoStorage.getItem(tabTwoContext.key()), 'u3', 'Signing out in one tab leaves the other tab session intact.');
 }
 console.log('Session-refresh tests passed: persistent Cognito storage, transient auth recovery, user-specific page/tab/filter/scroll restoration, and no hydration route reset.');
