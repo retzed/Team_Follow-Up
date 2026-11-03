@@ -7,8 +7,9 @@
 - Explicit sign-out removes only the current tab's identity backup and does not sign out another demo tab.
 - Added regression coverage that simulates a page reload, a second tab signing in as another user, and sign-out isolation.
 
-- Strengthened tab identity recovery by attaching its per-tab storage key to the current History API entry, with `window.name` and `sessionStorage` as compatible fallbacks. This prevents a browser reload from losing the tab key if the browser resets `window.name`.
-- Extended regression tests to simulate a full reload with a new JavaScript context, restored history state, and a reset `window.name`, while retaining second-tab identity isolation.
+- Strengthened demo identity persistence by storing the signed-in user ID in the current History API entry and the tab's `window.name`, in addition to `sessionStorage` and the per-tab `localStorage` backup. Startup restores from these independent sources and repopulates browser storage.
+- Explicit sign-out removes the identity from the current tab's storage, history entry and tab name without affecting another tab.
+- Extended regression tests to cover reload restoration when browser storage is empty, history state is unavailable, and a second tab signs in as another user.
 
 ## 3 November 2026 — Real-time Activity history
 
