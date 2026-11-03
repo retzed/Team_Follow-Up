@@ -4267,54 +4267,76 @@ async function handleDemoRealtimeChange(change){
  const rootIds=new Set((change?.rootParentIds||[]).filter(Boolean).map(String));
  const topLevelIds=new Set((change?.topLevelIds||[]).filter(Boolean).map(String));
  const assigneeIds=new Set((change?.assigneeIds||[]).filter(Boolean).map(String));
+ if(!itemIds.size)return;
+ // Read only the changed base-table records. Create and edit notifications for
+ // the same item therefore converge on the latest committed record.
+ const ids=[...itemIds],resolved=[];
+ for(let start=0;start<ids.length;start+=100){
+  const result=await api.resolveItems(ids.slice(start,start+100));
+  resolved.push(...(result?.items||[]).map(row=>row?.id?row:toAppItem(row)));
+ }
+ const resolvedById=new Map(resolved.map(item=>[String(item.id),item]));
+ for(const id of itemIds){
+  const item=resolvedById.get(id);
+  if(item){
+   const bucket=item.type==='project'||item.type==='job'?'parents':'children';
+   data[bucket]=(data[bucket]||[]).filter(row=>String(row.id)!==id);
+   data[bucket].push(item);
+   if(lastApiSnapshot){
+    lastApiSnapshot[bucket]=(lastApiSnapshot[bucket]||[]).filter(row=>String(row.id)!==id);
+    lastApiSnapshot[bucket].push({...item});
+   }
+  }else{
+   data.parents=(data.parents||[]).filter(row=>String(row.id)!==id);
+   data.children=(data.children||[]).filter(row=>String(row.id)!==id);
+   if(lastApiSnapshot){
+    lastApiSnapshot.parents=(lastApiSnapshot.parents||[]).filter(row=>String(row.id)!==id);
+    lastApiSnapshot.children=(lastApiSnapshot.children||[]).filter(row=>String(row.id)!==id);
+   }
+   if(topLevelIds.has(id))dataLoadState.childrenLoaded.delete(id);
+  }
+ }
+ invalidateHierarchyIndex();
+ if(topLevelIds.has(String(ui.selectedParentId||''))&&!data.parents.some(row=>String(row.id)===String(ui.selectedParentId))){
+  ui.selectedParentId=data.parents[0]?.id||'';
+  ui.selectedAssignedItemId=null;
+ }
  const currentUserId=String(ui.actingUserId||rawCurrentUser()?.id||'');
  if(currentUserId&&assigneeIds.has(currentUserId)){
-  ui.accountAssignedLoaded=false;
-  if(ui.page==='account'&&ui.accountTab==='assigned'){
-   if(ui.accountAssignedLoading)demoAssignedRefreshPending=true;
-   else void loadAccountAssignedItems();
-  }
+  if(ui.accountAssignedLoading)demoAssignedRefreshPending=true;
+  else if(ui.accountAssignedLoaded){
+   const assigned=new Map((ui.accountAssignedRows||[]).map(row=>[String(row.id),row]));
+   for(const id of itemIds)assigned.delete(id);
+   for(const item of resolvedById.values())if(String(item.ownerId||'')===currentUserId)assigned.set(String(item.id),item);
+   ui.accountAssignedRows=[...assigned.values()];
+   if(ui.page==='account'&&ui.accountTab==='assigned')renderAccountPage();
+  }else if(ui.page==='account'&&ui.accountTab==='assigned')void loadAccountAssignedItems();
  }
- if(itemIds.size&&ui.accountPinnedRows?.some(row=>itemIds.has(String(row.id))||rootIds.has(String(row.rootParentId||rootParent(row)?.id||'')))){
-  ui.accountPinnedLoaded=false;
-  if(ui.page==='account'&&ui.accountTab==='pinned'){
-   if(ui.accountPinnedLoading)demoPinnedRefreshPending=true;
-   else void loadAccountPinnedItems();
-  }
+ if(ui.accountPinnedRows?.some(row=>itemIds.has(String(row.id))||rootIds.has(String(row.rootParentId||rootParent(row)?.id||'')))){
+  const pinned=new Map((ui.accountPinnedRows||[]).map(row=>[String(row.id),row]));
+  for(const id of itemIds)pinned.delete(id);
+  for(const item of resolvedById.values())if(pinned.has(String(item.id)))pinned.set(String(item.id),item);
+  ui.accountPinnedRows=[...pinned.values()];
+  if(ui.page==='account'&&ui.accountTab==='pinned')renderAccountPage();
  }
- if(topLevelIds.size){
-  const ids=[...topLevelIds],resolved=[];
-  for(let start=0;start<ids.length;start+=100){
-   const result=await api.resolveItems(ids.slice(start,start+100));
-   resolved.push(...(result?.items||[]).map(row=>row?.id?row:toAppItem(row)));
-  }
-  const resolvedById=new Map(resolved.map(row=>[String(row.id),row]));
-  data.parents=(data.parents||[]).filter(row=>!topLevelIds.has(String(row.id)));
-  data.parents.push(...resolvedById.values());
-  data.parents.sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')));
-  if(lastApiSnapshot)lastApiSnapshot.parents=data.parents.map(row=>({...row}));
-  data.children=(data.children||[]).filter(row=>!topLevelIds.has(String(row.rootParentId||rootParent(row)?.id||'')));
-  invalidateHierarchyIndex();
-  if(!data.parents.some(row=>String(row.id)===String(ui.selectedParentId))){
-   ui.selectedParentId=data.parents[0]?.id||'';
-   ui.selectedAssignedItemId=null;
-   dataLoadState.childrenLoaded.delete(String(ui.selectedParentId||''));
-  }
-  renderParentList({skipRemote:true});renderDetail();
-  if(ui.page==='account'&&ui.accountTab==='search')renderAccountPage();
-  if(ui.selectedParentId&&!rootIds.has(String(ui.selectedParentId)))void ensureRootChildrenLoaded(ui.selectedParentId,{force:true});
- }
+ const parentListChanged=topLevelIds.size>0||[...resolvedById.values()].some(item=>item.type==='project'||item.type==='job');
+ if(parentListChanged)renderParentList({skipRemote:true});
  const selectedRootId=String(ui.selectedParentId||'');
- if(ui.page==='workspace'&&selectedRootId&&rootIds.has(selectedRootId)){
-  await ensureRootChildrenLoaded(selectedRootId,{force:true});
-  if(ui.tab==='activity'||ui.modal?.kind==='history')void refreshActivityFor(selectedRootId,'all');
- }
+ const selectedAffected=Boolean(selectedRootId&&(rootIds.has(selectedRootId)||itemIds.has(selectedRootId)));
+ if(ui.page==='workspace'&&selectedAffected)renderDetail();
+ if(ui.page==='account'&&ui.accountTab==='search'&&parentListChanged)renderAccountPage();
  if(ui.modal?.kind==='global-history')void refreshApplicationHistory(true);
  else if(ui.modal?.kind==='history'){
   const modalItem=allItem(ui.modal.itemId);
   const modalRoot=String(modalItem?.rootParentId||rootParent(modalItem)?.id||ui.modal.itemId||'');
   if(rootIds.has(modalRoot))void refreshActivityFor(modalRoot,'all');
  }
+}
+let demoRealtimeApplyQueue=Promise.resolve();
+function queueDemoRealtimeChange(change){
+ const queued=demoRealtimeApplyQueue.then(()=>handleDemoRealtimeChange(change));
+ demoRealtimeApplyQueue=queued.catch(error=>console.warn('Queued demo real-time reconciliation failed; the next durable signal will retry.',error));
+ return queued;
 }
 async function togglePinnedItem(itemId){
  const id=String(itemId||''),user=rawCurrentUser();if(!id||!user||user.id==='root')return;
@@ -5065,7 +5087,7 @@ async function startWorkspaceHydration(){
 }
 // Start with the current cached workspace in built-in mode; API mode progressively populates the UI.
 if(!dataLoadState.active&&!data.parents.some(p=>p.id===ui.selectedParentId))ui.selectedParentId=data.parents[0]?.id||'';
-window.__TEAM_FOLLOW_UP_DEMO_REALTIME_UNSUBSCRIBE=window.TeamFollowUpDataApi?.mode==='api'?null:window.TeamFollowUpDataApi?.subscribeRealtimeChanges?.(change=>{void handleDemoRealtimeChange(change);});
+window.__TEAM_FOLLOW_UP_DEMO_REALTIME_UNSUBSCRIBE=window.TeamFollowUpDataApi?.mode==='api'?null:window.TeamFollowUpDataApi?.subscribeRealtimeChanges?.(change=>{void queueDemoRealtimeChange(change);});
 setSignInState(Boolean(sessionUserIdAtLoad));
 render();
 window.__TEAM_FOLLOW_UP_APP_AUTH_CHANGED=(context)=>{if(!context)return;ui.actingUserId=context.teamUserId;ui.page='account';ui.accountTab='assigned';ui.accountLoading=true;ui.accountAssignedLoaded=false;ui.accountPinnedLoaded=false;ui.accountAssignedRows=[];ui.accountPinnedRows=[];render();if(dataLoadState.active)void startWorkspaceHydration();};
