@@ -327,6 +327,25 @@ function createHandlerContext(userId, loading = false) {
   assert.deepEqual([...state.calls[0].itemIds].sort(), ['task-a', 'task-b']);
 }
 
+{
+  const writeStart = html.indexOf(' function writeTables(t){');
+  const writeEnd = html.indexOf(' function ensureIndexFields(', writeStart);
+  assert.ok(writeStart >= 0 && writeEnd > writeStart, 'the built-in table writer must exist');
+  const writeSource = html.slice(writeStart, writeEnd);
+  assert.ok(!writeSource.includes('activityTableDirty=true'),
+    'ordinary item or profile table writes must not mark the entire Activity cache dirty');
+  const storeStart = html.indexOf('function storeActivityEvent(tables,raw){');
+  const storeEnd = html.indexOf('function toAppItem(record){', storeStart);
+  assert.ok(storeStart >= 0 && storeEnd > storeStart, 'the Activity event writer must exist');
+  const storeSource = html.slice(storeStart, storeEnd);
+  assert.ok(!storeSource.includes('activityTableDirty=true'),
+    'successful append-only Activity writes are already persisted individually and must not queue a full-history rewrite');
+  assert.ok(html.includes('pendingActivityEventIds.add(String(event.eventId))'),
+    'only failed individual event writes are queued for retry');
+  assert.ok(html.includes('for(const eventId of [...pendingActivityEventIds])'),
+    'the table flush retries only failed event IDs, not the complete history');
+}
+
 assert.ok(html.includes("new BroadcastChannel('team-follow-up-demo-realtime-v1')"),
   'same-origin demo tabs use BroadcastChannel for prompt update delivery.');
 assert.ok(html.includes("event.key!==REALTIME_SIGNAL_KEY||!event.newValue"),
