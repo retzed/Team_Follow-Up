@@ -1,5 +1,12 @@
 # Application Release Notes
 
+## 3 November 2026 — Real-time Activity history
+
+- Extended the demo's cross-tab item-change handler to fetch Activity rows only for the changed item IDs, then merge those rows into the workspace Activity index and application-wide history cache.
+- Refreshes the currently selected project's Activity view and an open item-history view when their root is affected. Global Activity history now uses a visible refresh when its cache is invalidated, avoiding a silent refresh superseding the visible one.
+- Added regression coverage for changed-item Activity reads, local workspace merge, selected timeline refresh, and global-history refresh.
+
+
 ## 28 October 2026 — Account Search, profile layout, navigation and mobile hardening
 
 - Added type, status, date sort, inclusive From/To date-range, user, and Clear controls to Account Search. Query matching includes Arabic names, descriptions, and creator/updater/owner/assignee identity information.
