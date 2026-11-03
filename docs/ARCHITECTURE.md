@@ -17,7 +17,8 @@ flowchart TD
     Context --> UI[Team Follow-Up UI]
     UI --> Adapter[TeamFollowUpDataApi]
     Adapter --> LocalStore[(Browser localStorage)]
-    Browser --> Session[(sessionStorage: active tab identity)]\n    Browser --> Recovery[(localStorage: last-session recovery copy)]
+    Browser --> Session[(sessionStorage: active tab identity)]
+    Browser --> Recovery[(localStorage: last-session recovery copy)]
     LocalStore --> Items[Work items and hierarchy]
     LocalStore --> Activity[Activity events]
     LocalStore --> Profiles[Built-in team profiles]
@@ -33,7 +34,7 @@ The runtime is organized as a small set of script-level components inside `index
 | Preference bootstrap | Detects supported browser language and color-scheme preferences before the page paints. Unsupported or indeterminate preferences fall back to English and dark mode. |
 | Runtime configuration | Defines the public demo configuration. The build script replaces this block to force the built-in data mode and local demonstration sign-in. |
 | Data-access adapter | Exposes asynchronous methods for bootstrap, users, top-level items, children, assignments, activity, archive, restore, and commits. |
-| Sign-in gate | Establishes the demo identity in the active tab. It explains that sign-in is illustrative, not a security boundary. |
+| Sign-in gate | Restores the current tab identity from `sessionStorage`; if the tab has no valid session, it checks the origin's `localStorage` recovery copy. It verifies a successful session write before entering the application and explains that sign-in is illustrative, not a security boundary. |
 | Application controller | Owns current UI state, filtering, selection, rendering, dialogs, translations, activity refresh, and delegated event handlers. |
 | Layout compatibility layer | Applies the sidebar-height and responsive fixes needed by the delivered static page. |
 | Build and test scripts | Produce the GitHub Pages artifact and validate JavaScript syntax, data operations, activity behavior, UI behavior, and build settings. |
@@ -79,7 +80,7 @@ The four logical collections are:
 
 1. The earliest script sets document language, direction, and theme defaults to avoid an incorrect initial layout.
 2. The demo runtime configuration selects the built-in adapter and local demo sign-in.
-3. The sign-in gate resolves the active demo teammate; it does not authenticate a real account.
+3. The sign-in gate checks the active tab's `sessionStorage` first, then the same-origin `localStorage` recovery copy. After a fresh sign-in, it writes and reads back the identity before it starts the application; if both storage writes fail, it stays on the sign-in screen and reports that browser storage must be enabled. This does not authenticate a real account.
 4. The adapter loads and normalizes the saved tables, migrates older local schema shapes when needed, and returns a UI snapshot.
 5. The application controller initializes its indexes, selected workspace item, translations, and event handlers, then renders the UI.
 
@@ -91,7 +92,7 @@ The four logical collections are:
 4. The data-access layer saves the changed logical tables, and the UI refreshes affected lists and timelines.
 5. A page reload reads the latest browser-local state when storage remains available.
 
-The `esc()` helper is the central output-encoding boundary for text interpolated into HTML templates. Plain text should be assigned using `textContent` where markup is not needed. Storage failures are caught and logged; when persistent browser storage is unavailable, the demo can continue in memory, but those changes may not survive the current page session.
+The `esc()` helper is the central output-encoding boundary for text interpolated into HTML templates. Plain text should be assigned using `textContent` where markup is not needed. Data-adapter storage failures are caught and logged. The pre-authentication gate is stricter for identity: it does not start the application unless the signed-in demo identity can be saved to at least one browser store.
 
 ## Frontend responsiveness and interaction lifecycle
 
@@ -106,7 +107,9 @@ Regression tests cover the event-propagation boundary, cyclic and deep hierarchy
 ## Persistence and isolation
 
 - Workspaces persist in `localStorage` for the site's origin and browser profile.
-- An existing tab restores its own demo identity from `sessionStorage` first. A same-origin `localStorage` recovery copy is used only when that tab entry is missing; a new tab without a session can inherit the last saved demo identity.
+- An existing tab restores its own demo identity from `sessionStorage` first. A same-origin `localStorage` recovery copy is used only when that tab entry is missing; a new tab without a session can inherit the last signed-in demo identity.
+- A normal restore from a valid tab session does not rewrite the shared recovery copy, so a refresh in one already-open tab cannot replace another tab's fallback identity. A fresh sign-in updates both copies; explicit sign-out clears both.
+- The sign-in gate verifies that at least one of the two storage writes succeeds before opening the application. When both stores reject the write, it does not create a session that would immediately disappear on refresh; the browser must allow site storage.
 - Demo usernames share the same workspace when used in the same browser profile because they are views of one local demonstration dataset.
 - Other browsers, devices, profiles, and private windows have independent data.
 - Clearing site storage or using **Reset demo data** removes or resets the local demonstration workspace.
