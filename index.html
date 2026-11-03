@@ -2112,17 +2112,43 @@ function readTables(includeActivity=false){
  const state={modules:null,authMode:null,mode:'signIn',pendingUser:'',nextStep:null,appStarted:false,submitting:false};
  const LOCAL_SESSION_KEY='team-follow-up-local-auth-v1';
  const LOCAL_TAB_NAME_MARKER='|__TEAM_FOLLOW_UP_LOCAL_TAB_V1__:';
+ const LOCAL_USER_NAME_MARKER='|__TEAM_FOLLOW_UP_LOCAL_USER_V1__:';
  const LOCAL_HISTORY_TAB_ID_KEY='__TEAM_FOLLOW_UP_LOCAL_TAB_ID_V1__';
+ const LOCAL_HISTORY_USER_ID_KEY='__TEAM_FOLLOW_UP_LOCAL_USER_ID_V1__';
  function validLocalTabId(value){return /^[A-Za-z0-9_-]{8,}$/.test(String(value||''));}
+ function readWindowNameMarker(marker){
+  try{
+   const name=String(window.name||''),index=name.lastIndexOf(marker);
+   if(index<0)return '';
+   const start=index+marker.length,end=name.indexOf('|',start);
+   return name.slice(start,end<0?name.length:end);
+  }catch(error){return '';}
+ }
+ function writeWindowNameMarker(marker,value){
+  try{
+   let name=String(window.name||''),index=name.lastIndexOf(marker);
+   if(index>=0){
+    const start=index+marker.length,end=name.indexOf('|',start);
+    name=name.slice(0,index)+name.slice(end<0?name.length:end);
+   }
+   window.name=name+marker+String(value||'');
+  }catch(error){console.warn('The browser tab name could not retain the demo session marker.',error);}
+ }
+ function removeWindowNameMarker(marker){
+  try{
+   let name=String(window.name||''),index=name.lastIndexOf(marker);
+   if(index<0)return;
+   const start=index+marker.length,end=name.indexOf('|',start);
+   window.name=name.slice(0,index)+name.slice(end<0?name.length:end);
+  }catch(error){}
+ }
  function localSessionTabStorageKey(){
   let tabId='';
   try{
    const historyState=window.history?.state;
    if(historyState&&typeof historyState==='object')tabId=String(historyState[LOCAL_HISTORY_TAB_ID_KEY]||'');
   }catch(error){}
-  const currentName=String(window.name||'');
-  const markerIndex=currentName.lastIndexOf(LOCAL_TAB_NAME_MARKER);
-  const namedTabId=markerIndex>=0?currentName.slice(markerIndex+LOCAL_TAB_NAME_MARKER.length):'';
+  const namedTabId=readWindowNameMarker(LOCAL_TAB_NAME_MARKER);
   if(!validLocalTabId(tabId)&&validLocalTabId(namedTabId))tabId=namedTabId;
   if(!validLocalTabId(tabId)){
    tabId=String(window.crypto?.randomUUID?.()||('tab_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2)));
@@ -2135,28 +2161,35 @@ function readTables(includeActivity=false){
     window.history?.replaceState?.(nextState,document.title,window.location.href);
    }
   }catch(error){console.warn('The browser history entry could not retain the demo tab identifier; window.name and sessionStorage remain available.',error);}
-  if(namedTabId!==tabId){
-   try{window.name=currentName+LOCAL_TAB_NAME_MARKER+tabId;}catch(error){}
-  }
+  if(namedTabId!==tabId)writeWindowNameMarker(LOCAL_TAB_NAME_MARKER,tabId);
   return LOCAL_SESSION_KEY+':'+tabId;
  }
  function persistLocalSessionUser(teamUserId){
   const userId=String(teamUserId||'');
+  if(!validIds.includes(userId))return;
   try{sessionStorage.setItem(LOCAL_SESSION_KEY,userId);}catch(error){console.warn('The demo identity could not be stored in this tab session.',error);}
   try{localStorage.setItem(localSessionTabStorageKey(),userId);}catch(error){console.warn('The demo identity could not be backed up for this browser tab.',error);}
+  try{
+   const historyState=window.history?.state;
+   const nextState=historyState&&typeof historyState==='object'?{...historyState}:{};
+   nextState[LOCAL_HISTORY_USER_ID_KEY]=userId;
+   window.history?.replaceState?.(nextState,document.title,window.location.href);
+  }catch(error){console.warn('The browser history entry could not retain the demo identity; browser storage and window.name remain available.',error);}
+  writeWindowNameMarker(LOCAL_USER_NAME_MARKER,userId);
  }
  function restoreLocalSessionUser(){
   let saved='';
   try{saved=sessionStorage.getItem(LOCAL_SESSION_KEY)||'';}catch(error){}
-  if(validIds.includes(saved)){
-   try{localStorage.setItem(localSessionTabStorageKey(),saved);}catch(error){}
-   return saved;
-  }
+  if(validIds.includes(saved)){persistLocalSessionUser(saved);return saved;}
   try{saved=localStorage.getItem(localSessionTabStorageKey())||'';}catch(error){}
-  if(validIds.includes(saved)){
-   try{sessionStorage.setItem(LOCAL_SESSION_KEY,saved);}catch(error){}
-   return saved;
-  }
+  if(validIds.includes(saved)){persistLocalSessionUser(saved);return saved;}
+  try{
+   const historyState=window.history?.state;
+   saved=historyState&&typeof historyState==='object'?String(historyState[LOCAL_HISTORY_USER_ID_KEY]||''):'';
+  }catch(error){saved='';}
+  if(validIds.includes(saved)){persistLocalSessionUser(saved);return saved;}
+  saved=readWindowNameMarker(LOCAL_USER_NAME_MARKER);
+  if(validIds.includes(saved)){persistLocalSessionUser(saved);return saved;}
   return '';
  }
  function clearLocalSessionUser(){
@@ -2165,15 +2198,14 @@ function readTables(includeActivity=false){
   try{localStorage.removeItem(storageKey);}catch(error){}
   try{
    const historyState=window.history?.state;
-   if(historyState&&typeof historyState==='object'&&historyState[LOCAL_HISTORY_TAB_ID_KEY]){
-    const nextState={...historyState};delete nextState[LOCAL_HISTORY_TAB_ID_KEY];
+   if(historyState&&typeof historyState==='object'){
+    const nextState={...historyState};
+    delete nextState[LOCAL_HISTORY_TAB_ID_KEY];delete nextState[LOCAL_HISTORY_USER_ID_KEY];
     window.history.replaceState(Object.keys(nextState).length?nextState:null,document.title,window.location.href);
    }
   }catch(error){}
-  try{
-   const currentName=String(window.name||''),markerIndex=currentName.lastIndexOf(LOCAL_TAB_NAME_MARKER);
-   if(markerIndex>=0)window.name=currentName.slice(0,markerIndex);
-  }catch(error){}
+  removeWindowNameMarker(LOCAL_USER_NAME_MARKER);
+  removeWindowNameMarker(LOCAL_TAB_NAME_MARKER);
  }
  screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;
  const ar=root.lang==='ar';
