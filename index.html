@@ -2364,7 +2364,9 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
      }
      for(const key of legacyKeys){
       const value=window.sessionStorage.getItem(key);
-      if(value!==null&&await tokenStorage.getItem(key)===null)await tokenStorage.setItem(key,value);
+      const stored=await tokenStorage.getItem(key);
+      if(value!==null&&stored===null)await tokenStorage.setItem(key,value);
+      if(value!==null)window.sessionStorage.removeItem(key);
      }
     }catch(storageMigrationError){console.warn('Could not migrate existing Cognito session storage; continuing with persistent token storage.',storageMigrationError);}
    }
