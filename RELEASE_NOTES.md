@@ -7,6 +7,9 @@
 - Explicit sign-out removes only the current tab's identity backup and does not sign out another demo tab.
 - Added regression coverage that simulates a page reload, a second tab signing in as another user, and sign-out isolation.
 
+- Strengthened tab identity recovery by attaching its per-tab storage key to the current History API entry, with `window.name` and `sessionStorage` as compatible fallbacks. This prevents a browser reload from losing the tab key if the browser resets `window.name`.
+- Extended regression tests to simulate a full reload with a new JavaScript context, restored history state, and a reset `window.name`, while retaining second-tab identity isolation.
+
 ## 3 November 2026 — Real-time Activity history
 
 - Extended the demo's cross-tab item-change handler to fetch Activity rows only for the changed item IDs, then merge those rows into the workspace Activity index and application-wide history cache.
