@@ -129,7 +129,9 @@ const recordedDelete = history.events.find(e => e.id === 'evt-transaction-delete
 assert.ok(recordedDelete, 'delete event is retained');
 // Force an exact timestamp tie: deterministic IDs must keep the order stable even when both events
 // share the same millisecond (the common cause of list items jumping after selection).
-await api.request('PATCH', '/activity/evt-transaction-create', { at: recordedDelete.at });
+const tiedAt = '2026-11-03T00:00:00.000Z';
+await api.request('PATCH', '/activity/evt-transaction-create', { at: tiedAt });
+await api.request('PATCH', '/activity/evt-transaction-delete', { at: tiedAt });
 history = await api.queryActivity('p-test', 'item');
 assert.equal(history.events[0].at, history.events[1].at, 'the regression test forces identical timestamps');
 assert.equal(history.events[0].id, 'evt-transaction-delete', 'equal-time events use their ID as a stable secondary sort key');
