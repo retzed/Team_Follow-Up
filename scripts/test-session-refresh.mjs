@@ -154,7 +154,11 @@ assert.doesNotMatch(localAuthSource, /window\.name|history\.state|history\.repla
   'Demo identity restoration does not depend on browser-specific tab metadata or URL markers.');
 assert.ok(localAuthSource.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)') &&
           localAuthSource.includes('localStorage.getItem(LOCAL_SESSION_KEY)'),
-  'An existing tab session is checked first, with an origin-local recovery copy as fallback.');
+  'An existing tab session is checked first, with a persistent origin-local recovery copy as fallback.');
+assert.ok(localAuthSource.includes('if(!storedAsBackup)return false;'),
+  'A demo sign-in is rejected unless localStorage accepts and verifies the persistent session record.');
+assert.ok(localAuthSource.indexOf('if(!storedAsBackup)return false;') < localAuthSource.indexOf('sessionStorage.setItem(LOCAL_SESSION_KEY,userId)'),
+  'The tab-only session is not written before durable browser storage has been verified.');
 assert.ok(html.includes("const saved=restoreLocalSessionUser();if(validIds.includes(saved)){finishVisualAuth(makeLocalContext(saved,localTeamUsers.find(u=>u.id===saved)?.aliases[0]||''));return;}"),
   'Local authentication restores the saved user before showing the credential form.');
 assert.ok(html.includes('if(!persistLocalSessionUser(teamUserId)){'),
