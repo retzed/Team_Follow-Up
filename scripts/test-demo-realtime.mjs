@@ -110,7 +110,8 @@ function createHandlerContext(userId, loading = false, resolvedItems = [], activ
   };
   const data = {
     parents: [{ id: 'project-1', type: 'project', name: 'Project', ownerId: 'u1' }],
-    children: []
+    children: [],
+    activity: []
   };
   const api = {
     mode: 'builtin',
