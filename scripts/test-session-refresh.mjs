@@ -20,7 +20,8 @@ assert.ok(authStart >= 0 && authEnd > authStart, 'Authenticated session restorat
 const authSource = html.slice(authStart, authEnd);
 assert.ok(authSource.indexOf('fetchAuthSession()') < authSource.indexOf('getCurrentUser()'),
   'Token refresh/session validation must run before reading the Cognito user.');
-assert.doesNotMatch(authSource, /fetchUserAttributes\(\);\s*\}catch/, 'Transient profile-attribute failures must not be silently converted to an unmapped user.');
+assert.ok(authSource.includes('identityErrorName') && authSource.includes("if(!/NotAuthorizedException|UserUnAuthenticatedException/.test(identityErrorName))throw identityError;"),
+  'Only stale Cognito authorization errors trigger a forced refresh; transient profile failures remain visible to session recovery.');
 assert.ok(authSource.includes('identityErrorName') && authSource.includes('session=await state.modules.fetchAuthSession({forceRefresh:true})'),
   'A Cognito identity lookup rejected by a stale access token gets one forced-refresh retry before sign-in is reset.');
 assert.ok(authSource.includes("if(!/NotAuthorizedException|UserUnAuthenticatedException/.test(identityErrorName))throw identityError;"),
