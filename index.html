@@ -2250,8 +2250,18 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
   catch(error){session=await state.modules.fetchAuthSession({forceRefresh:true});}
   if(!session?.tokens?.accessToken)session=await state.modules.fetchAuthSession({forceRefresh:true});
   if(!session?.tokens?.accessToken)throw new Error('NO_VALID_SESSION');
-  const current=await state.modules.getCurrentUser();
-  const attributes=await state.modules.fetchUserAttributes();
+  let current,attributes;
+  try{
+   current=await state.modules.getCurrentUser();
+   attributes=await state.modules.fetchUserAttributes();
+  }catch(identityError){
+   const identityErrorName=String(identityError?.name||'');
+   if(!/NotAuthorizedException|UserUnAuthenticatedException/.test(identityErrorName))throw identityError;
+   session=await state.modules.fetchAuthSession({forceRefresh:true});
+   if(!session?.tokens?.accessToken)throw identityError;
+   current=await state.modules.getCurrentUser();
+   attributes=await state.modules.fetchUserAttributes();
+  }
   const teamUserId=resolveTeamUserId(current,attributes);
   if(!teamUserId){try{await state.modules.signOut();}catch(e){}throw new Error('TEAM_PROFILE_NOT_MAPPED');}
   return {teamUserId,authMode:'cognito',cognitoUsername:current.username,cognitoUserId:current.userId,email:attributes.email||'',changePassword:async(oldPassword,newPassword)=>state.modules.updatePassword({oldPassword,newPassword}),verifyPassword:async password=>{const api=window.TeamFollowUpDataApi;if(!api||typeof api.verifyCurrentPassword!=='function')throw new Error('Current-password verification is unavailable.');const result=await api.verifyCurrentPassword(current.username,password);return result?.valid===true;},getAccessToken:async()=>getCognitoAccessToken()};
