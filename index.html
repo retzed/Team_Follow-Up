@@ -2115,6 +2115,7 @@ function readTables(includeActivity=false){
  const LOCAL_USER_NAME_MARKER='|__TEAM_FOLLOW_UP_LOCAL_USER_V1__:';
  const LOCAL_HISTORY_TAB_ID_KEY='__TEAM_FOLLOW_UP_LOCAL_TAB_ID_V1__';
  const LOCAL_HISTORY_USER_ID_KEY='__TEAM_FOLLOW_UP_LOCAL_USER_ID_V1__';
+ const LOCAL_URL_TAB_PARAM='__team_follow_up_tab';
  function validLocalTabId(value){return /^[A-Za-z0-9_-]{8,}$/.test(String(value||''));}
  function readWindowNameMarker(marker){
   try{
@@ -2142,6 +2143,36 @@ function readTables(includeActivity=false){
    window.name=name.slice(0,index)+name.slice(end<0?name.length:end);
   }catch(error){}
  }
+ function readUrlTabId(){
+  try{
+   const href=String(window.location.href||''),hashIndex=href.indexOf('#');
+   if(hashIndex<0)return '';
+   const entry=href.slice(hashIndex+1).split('&').find(part=>part.startsWith(LOCAL_URL_TAB_PARAM+'='));
+   const value=entry?decodeURIComponent(entry.slice(LOCAL_URL_TAB_PARAM.length+1)):'';
+   return validLocalTabId(value)?value:'';
+  }catch(error){return '';}
+ }
+ function writeUrlTabId(tabId){
+  try{
+   const href=String(window.location.href||''),hashIndex=href.indexOf('#');
+   const base=hashIndex>=0?href.slice(0,hashIndex):href;
+   const fragment=hashIndex>=0?href.slice(hashIndex+1):'';
+   const parts=fragment?fragment.split('&').filter(part=>part&&!part.startsWith(LOCAL_URL_TAB_PARAM+'=')):[];
+   if(validLocalTabId(tabId))parts.push(LOCAL_URL_TAB_PARAM+'='+encodeURIComponent(tabId));
+   const nextUrl=base+(parts.length?'#'+parts.join('&'):'');
+   if(nextUrl!==href)window.history?.replaceState?.(window.history?.state??null,document.title,nextUrl);
+  }catch(error){console.warn('The browser URL could not retain the demo tab identifier; sessionStorage, history state and window.name remain available.',error);}
+ }
+ function removeUrlTabId(){
+  try{
+   const href=String(window.location.href||''),hashIndex=href.indexOf('#');
+   if(hashIndex<0)return;
+   const base=href.slice(0,hashIndex),fragment=href.slice(hashIndex+1);
+   const parts=fragment.split('&').filter(part=>part&&!part.startsWith(LOCAL_URL_TAB_PARAM+'='));
+   const nextUrl=base+(parts.length?'#'+parts.join('&'):'');
+   if(nextUrl!==href)window.history?.replaceState?.(window.history?.state??null,document.title,nextUrl);
+  }catch(error){}
+ }
  function localSessionTabStorageKey(){
   let tabId='';
   try{
@@ -2149,6 +2180,8 @@ function readTables(includeActivity=false){
    if(historyState&&typeof historyState==='object')tabId=String(historyState[LOCAL_HISTORY_TAB_ID_KEY]||'');
   }catch(error){}
   const namedTabId=readWindowNameMarker(LOCAL_TAB_NAME_MARKER);
+  const urlTabId=readUrlTabId();
+  if(!validLocalTabId(tabId)&&validLocalTabId(urlTabId))tabId=urlTabId;
   if(!validLocalTabId(tabId)&&validLocalTabId(namedTabId))tabId=namedTabId;
   if(!validLocalTabId(tabId)){
    tabId=String(window.crypto?.randomUUID?.()||('tab_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2)));
@@ -2162,6 +2195,7 @@ function readTables(includeActivity=false){
    }
   }catch(error){console.warn('The browser history entry could not retain the demo tab identifier; window.name and sessionStorage remain available.',error);}
   if(namedTabId!==tabId)writeWindowNameMarker(LOCAL_TAB_NAME_MARKER,tabId);
+  if(urlTabId!==tabId)writeUrlTabId(tabId);
   return LOCAL_SESSION_KEY+':'+tabId;
  }
  function persistLocalSessionUser(teamUserId){
@@ -2206,6 +2240,7 @@ function readTables(includeActivity=false){
   }catch(error){}
   removeWindowNameMarker(LOCAL_USER_NAME_MARKER);
   removeWindowNameMarker(LOCAL_TAB_NAME_MARKER);
+  removeUrlTabId();
  }
  screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;
  const ar=root.lang==='ar';
