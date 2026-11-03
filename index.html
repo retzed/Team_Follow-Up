@@ -1538,8 +1538,12 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
    // Rewriting/deleting the complete event collection here allowed one tab to
    // erase another tab's concurrently appended history.
    if(activityTableLoaded&&activityTableDirty){
-    for(const event of memoryTables.activityEvents||[])persistActivityEvent(event);
-    activityTableDirty=false;
+    const eventsById=new Map((memoryTables.activityEvents||[]).map(event=>[String(event.eventId||event.id||''),event]));
+    for(const eventId of [...pendingActivityEventIds]){
+     const event=eventsById.get(eventId);
+     if(event)persistActivityEvent(event);else pendingActivityEventIds.delete(eventId);
+    }
+    activityTableDirty=pendingActivityEventIds.size>0;
    }
    memoryTables.workItems=clone(primary.workItems||[]);
    memoryTables.archiveItems=clone(primary.archiveItems||[]);
@@ -1565,6 +1569,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
  function scheduleTableStorageSave(){if(typeof setTimeout!=='function'){flushTableStorage();return;}if(tableStorageSaveTimer)clearTimeout(tableStorageSaveTimer);tableStorageSaveTimer=setTimeout(()=>{tableStorageSaveTimer=0;flushTableStorage();},0);}
  if(typeof window.addEventListener==='function')window.addEventListener('pagehide',flushTableStorage,{capture:true});
  let activityTableLoaded=false,activityTableDirty=false;
+ const pendingActivityEventIds=new Set();
  function activityEventStorageKey(itemId,eventId){return ACTIVITY_EVENT_PREFIX+encodeURIComponent(String(itemId||''))+':'+encodeURIComponent(String(eventId||''));}
  function migrateLegacyActivityArray(){
   let raw=null;try{raw=localStorage.getItem(ACTIVITY_TABLE_KEY);}catch(error){return;}
@@ -1603,8 +1608,9 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
      event=ensureActivityIndexes({...event,eventId:candidate});
     }
     localStorage.setItem(key,JSON.stringify(event));
+   pendingActivityEventIds.delete(String(event.eventId));
    }catch(error){
-    if(memoryTables){const rows=memoryTables.activityEvents||(memoryTables.activityEvents=[]);const index=rows.findIndex(row=>String(row.eventId||row.id||'')===String(event.eventId));if(index<0)rows.push(event);else rows[index]=event;activityTableLoaded=true;activityTableDirty=true;}
+    if(memoryTables){const rows=memoryTables.activityEvents||(memoryTables.activityEvents=[]);const index=rows.findIndex(row=>String(row.eventId||row.id||'')===String(event.eventId));if(index<0)rows.push(event);else rows[index]=event;activityTableLoaded=true;activityTableDirty=true;pendingActivityEventIds.add(String(event.eventId));}
     else throw error;
    }
    return event;
@@ -1710,10 +1716,10 @@ function readTables(includeActivity=false){
   memoryTables=t;
   if(wasUninitialized&&Array.isArray(t.activityEvents)){
    const seedEvents=t.activityEvents.slice();
-   memoryTables.activityEvents=[];activityTableLoaded=false;activityTableDirty=false;
+   memoryTables.activityEvents=[];activityTableLoaded=false;activityTableDirty=false;pendingActivityEventIds.clear();
    try{memoryTables.activityEvents=persistInitialActivityBatch(seedEvents);localStorage.removeItem(ACTIVITY_TABLE_KEY);}
-   catch(e){memoryTables.activityEvents=seedEvents;activityTableLoaded=true;activityTableDirty=true;}
-  }else if(activityTableLoaded)activityTableDirty=true;
+   catch(e){memoryTables.activityEvents=seedEvents;activityTableLoaded=true;activityTableDirty=true;for(const event of seedEvents)pendingActivityEventIds.add(String(event.eventId||event.id||''));}
+  }
   if(previous){
    mergePendingBuiltinChange(createBuiltinRealtimeChange(previous,t));
    const before=new Map((previous.userProfiles||[]).map(row=>[String(row.userId||row.id||''),row]));
@@ -1750,7 +1756,6 @@ function readTables(includeActivity=false){
   if(activityTableLoaded){
    const existingIndex=tables.activityEvents.findIndex(row=>String(row.eventId||row.id||'')===String(event.eventId));
    if(existingIndex<0)tables.activityEvents.push(event);else tables.activityEvents[existingIndex]=event;
-   activityTableDirty=true;
   }
   return event;
  }
