@@ -145,133 +145,113 @@ clearContext.clearView();
 assert.equal(storage.getItem('team-follow-up-view-state-v1:u2'), null, 'Explicit sign-out clears the tab-scoped view state.');
 assert.equal(persistentStorage.getItem('team-follow-up-view-state-v1:u2'), null, 'Explicit sign-out also clears the persistent view-state backup.');
 
-if (html.includes('function initializeLocalAuth(){')) {
-  assert.ok(html.includes('function localSessionTabStorageKey(){') && html.includes('function restoreLocalSessionUser(){') && html.includes('function persistLocalSessionUser(teamUserId)') && html.includes('function clearLocalSessionUser()'),
-    'The demo identity uses a dedicated tab-scoped persistence helper.');
-  assert.ok(html.includes('LOCAL_HISTORY_TAB_ID_KEY') && html.includes('window.history?.replaceState?.'),
-    'The demo identity is associated with the current browser history entry so it survives a page reload even if window.name changes.');
-  assert.doesNotMatch(html, /localStorage\.(?:getItem|setItem|removeItem)\(LOCAL_SESSION_KEY\)/,
-    'Demo tabs do not share one global localStorage identity key.');
+const localAuthStart = html.indexOf("const LOCAL_SESSION_KEY='team-follow-up-local-auth-v2';");
+const localAuthEnd = html.indexOf('\\n screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;', localAuthStart);
+assert.ok(localAuthStart >= 0 && localAuthEnd > localAuthStart,
+  'The demo session implementation is a single extractable helper block.');
+const localAuthSource = html.slice(localAuthStart, localAuthEnd);
+assert.doesNotMatch(localAuthSource, /window\\.name|history\\.state|history\\.replaceState|location\\.href|__team_follow_up_tab/,
+  'Demo identity restoration does not depend on browser-specific tab metadata or URL markers.');
+assert.ok(localAuthSource.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)') &&
+          localAuthSource.includes('localStorage.getItem(LOCAL_SESSION_KEY)'),
+  'An existing tab session is checked first, with an origin-local recovery copy as fallback.');
+assert.ok(html.includes("const saved=restoreLocalSessionUser();if(validIds.includes(saved)){finishVisualAuth(makeLocalContext(saved,localTeamUsers.find(u=>u.id===saved)?.aliases[0]||''));return;}"),
+  'Local authentication restores the saved user before showing the credential form.');
+assert.ok(html.indexOf('persistLocalSessionUser(teamUserId);') < html.indexOf('finishVisualAuth(makeLocalContext(teamUserId,username))'),
+  'A successful local sign-in is persisted before the application UI is started.');
+assert.ok(html.includes("if(cfg.localAuth?.enabled===true&&!hasCognitoConfigurationAttempt()){initializeLocalAuth();return;}"),
+  'The public demo selects local-session restoration before entering the Cognito flow.');
 
-  const localAuthStart = html.indexOf('const LOCAL_HISTORY_TAB_ID_KEY=');
-  const localAuthEnd = html.indexOf('\n screen.hidden=false;screen.lang=root.lang', localAuthStart);
-  assert.ok(localAuthStart >= 0 && localAuthEnd > localAuthStart, 'Tab-scoped demo session helpers must be extractable for isolated regression tests.');
-  const localAuthSource = html.slice(localAuthStart, localAuthEnd);
-  const sharedDemoStorage = createMemoryStorage();
-  const tabOneSession = createMemoryStorage();
-  const tabOneWindow = { name: '', history: null, location: { href: 'https://retzed.github.io/Team_Follow-Up/' }, crypto: { randomUUID: () => 'tab-one-identity' } };
-  const tabOneHistory = {
-    state: null,
-    lastUrl: '',
-    replaceState(nextState, _title, url) {
-      this.state = nextState;
-      if (url) { this.lastUrl = url; tabOneWindow.location.href = url; }
-    }
+const createMemoryStorage = () => {
+  const map = new Map();
+  return {
+    map,
+    getItem: key => map.has(String(key)) ? map.get(String(key)) : null,
+    setItem: (key, value) => map.set(String(key), String(value)),
+    removeItem: key => map.delete(String(key))
   };
-  tabOneWindow.history = tabOneHistory;
-  const baseTabContext = {
-    validIds: ['u1','u2','u3','u4','u5','u6','root'],
-    LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
-    LOCAL_TAB_NAME_MARKER: '|__TEAM_FOLLOW_UP_LOCAL_TAB_V1__:',
-    LOCAL_USER_NAME_MARKER: '|__TEAM_FOLLOW_UP_LOCAL_USER_V1__:',
-    LOCAL_URL_TAB_PARAM: '__team_follow_up_tab',
-    window: tabOneWindow, sessionStorage: tabOneSession, localStorage: sharedDemoStorage,
-    document: { title: 'Team Follow-Up' }, String, Date, Math, console
-  };
-  vm.runInNewContext(localAuthSource + '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;this.key=localSessionTabStorageKey;', baseTabContext);
-  baseTabContext.persist('u2');
-  assert.ok(tabOneHistory.lastUrl.includes('#__team_follow_up_tab='), 'The current URL carries an opaque per-tab marker so the localStorage backup can be found after browser tab metadata is lost.');
-  tabOneWindow.location.href = tabOneHistory.lastUrl;
-  const tabOneKey = baseTabContext.key();
-  const tabOneHistoryId = tabOneHistory.state?.__TEAM_FOLLOW_UP_LOCAL_TAB_ID_V1__;
-  assert.equal(tabOneSession.getItem('team-follow-up-local-auth-v1'), 'u2', 'The demo identity remains available in its browser tab session.');
-  assert.equal(sharedDemoStorage.getItem(tabOneKey), 'u2', 'The demo identity has a persistent backup scoped to that tab.');
-  assert.ok(tabOneHistoryId, 'The tab identity is saved to the active browser history entry.');
-  assert.equal(tabOneHistory.state?.__TEAM_FOLLOW_UP_LOCAL_USER_ID_V1__, 'u2', 'The signed-in demo user is also saved to the current history entry.');
-  assert.ok(tabOneWindow.name.includes('|__TEAM_FOLLOW_UP_LOCAL_USER_V1__:u2'), 'The signed-in demo user is retained in the tab name as a browser-storage-independent fallback.');
+};
+const sharedLocalStorage = createMemoryStorage();
+const firstTabStorage = createMemoryStorage();
+const firstTabContext = {
+  validIds: ['u1','u2','u3','u4','u5','u6','root'],
+  LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v2',
+  LEGACY_LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
+  sessionStorage: firstTabStorage,
+  localStorage: sharedLocalStorage,
+  console
+};
+vm.runInNewContext(localAuthSource +
+  '\\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;',
+  firstTabContext);
 
-  // The history entry can restore the identity even when the browser session and
-  // local storage records are both missing at reload time.
-  const emptySessionAfterReload = createMemoryStorage();
-  const emptyStorageAfterReload = createMemoryStorage();
-  const stateOnlyHistory = {
-    state: structuredClone(tabOneHistory.state),
-    replaceState(nextState) { this.state = nextState; }
-  };
-  const stateOnlyWindow = { name: '', history: stateOnlyHistory, location: { href: 'https://retzed.github.io/Team_Follow-Up/' }, crypto: { randomUUID: () => 'unused-state-fallback' } };
-  const stateOnlyContext = {
-    ...baseTabContext, window: stateOnlyWindow, sessionStorage: emptySessionAfterReload,
-    localStorage: emptyStorageAfterReload
-  };
-  vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', stateOnlyContext);
-  assert.equal(stateOnlyContext.restore(), 'u2', 'A history-entry identity restores the demo user when both browser storage stores are empty.');
-  assert.equal(emptySessionAfterReload.getItem('team-follow-up-local-auth-v1'), 'u2', 'History restoration repopulates sessionStorage.');
+// Sign-in writes the exact user to both stores.
+assert.equal(firstTabContext.persist('u2'), true);
+assert.equal(firstTabStorage.getItem('team-follow-up-local-auth-v2'), 'u2');
+assert.equal(sharedLocalStorage.getItem('team-follow-up-local-auth-v2'), 'u2');
 
-  // The tab-name identity provides a second independent path if history state
-  // is unavailable as well.
-  const nameOnlyContext = {
-    ...baseTabContext,
-    window: { name: tabOneWindow.name, history: { state: null, replaceState(nextState) { this.state = nextState; } }, location: { href: 'https://retzed.github.io/Team_Follow-Up/' }, crypto: { randomUUID: () => 'unused-name-fallback' } },
-    sessionStorage: createMemoryStorage(), localStorage: createMemoryStorage()
-  };
-  vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', nameOnlyContext);
-  assert.equal(nameOnlyContext.restore(), 'u2', 'The tab-name identity restores the demo user when storage and history state are unavailable.');
+// A hard refresh reconstructs JavaScript state but the browser retains its tab storage.
+const refreshedTabStorage = createMemoryStorage();
+for (const [key, value] of firstTabStorage.map) refreshedTabStorage.setItem(key, value);
+const refreshedTabContext = {
+  ...firstTabContext,
+  sessionStorage: refreshedTabStorage
+};
+vm.runInNewContext(localAuthSource + '\\nthis.restore=restoreLocalSessionUser;', refreshedTabContext);
+assert.equal(refreshedTabContext.restore(), 'u2',
+  'A hard refresh restores the same user from the tab-scoped session without asking for credentials.');
 
-  // If the browser reconstructs a tab without sessionStorage, history.state or
-  // window.name, the unchanged URL marker still locates the per-tab localStorage row.
-  const urlOnlyWindow = {
-    name: '',
-    history: { state: null, replaceState(nextState, _title, url) { this.state = nextState; if (url) this.lastUrl = url; } },
-    location: { href: tabOneWindow.location.href },
-    crypto: { randomUUID: () => 'unused-url-fallback' }
-  };
-  const urlOnlyContext = {
-    ...baseTabContext, window: urlOnlyWindow,
-    sessionStorage: createMemoryStorage(), localStorage: sharedDemoStorage
-  };
-  vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', urlOnlyContext);
-  assert.equal(urlOnlyContext.restore(), 'u2', 'The URL tab marker restores the same user when sessionStorage, history.state and window.name have all been lost.');
+// A second tab can sign in as another user without replacing the first tab's
+// authoritative sessionStorage identity.
+const secondTabStorage = createMemoryStorage();
+const secondTabContext = {
+  ...firstTabContext,
+  sessionStorage: secondTabStorage
+};
+vm.runInNewContext(localAuthSource +
+  '\\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;',
+  secondTabContext);
+secondTabContext.persist('u3');
+assert.equal(secondTabContext.restore(), 'u3');
+assert.equal(refreshedTabContext.restore(), 'u2',
+  'A valid user in another tab does not override this tab’s session.');
 
-  // Simulate a full reload: sessionStorage is reconstructed from its persisted values,
-  // while window.name is deliberately blanked to verify history.state is an independent key source.
-  const reloadedTabSession = createMemoryStorage();
-  for (const [key,value] of tabOneSession.map) reloadedTabSession.setItem(key,value);
-  const reloadedTabWindow = { name: '', history: null, location: { href: tabOneWindow.location.href }, crypto: { randomUUID: () => 'unused-reload-id' } };
-  const reloadedTabHistory = {
-    state: structuredClone(tabOneHistory.state),
-    lastUrl: reloadedTabWindow.location.href,
-    replaceState(nextState, _title, url) {
-      this.state = nextState;
-      if (url) { this.lastUrl = url; reloadedTabWindow.location.href = url; }
-    }
-  };
-  reloadedTabWindow.history = reloadedTabHistory;
-  const reloadedTabContext = {
-    ...baseTabContext, window: reloadedTabWindow, sessionStorage: reloadedTabSession, localStorage: sharedDemoStorage
-  };
-  vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;this.key=localSessionTabStorageKey;', reloadedTabContext);
-  assert.equal(reloadedTabContext.restore(), 'u2', 'A hard reload restores the same signed-in demo identity.');
-  assert.equal(reloadedTabSession.getItem('team-follow-up-local-auth-v1'), 'u2', 'Reload restoration retains the tab-scoped session record.');
-  assert.equal(reloadedTabContext.key(), tabOneKey, 'The same history entry resolves to the same persistent tab key even when window.name is reset.');
 
-  const tabTwoSession = createMemoryStorage();
-  const tabTwoHistory = { state: null, replaceState(nextState) { this.state = nextState; } };
-  const tabTwoWindow = { name: '', history: tabTwoHistory, location: { href: 'https://retzed.github.io/Team_Follow-Up/' }, crypto: { randomUUID: () => 'tab-two-identity' } };
-  const tabTwoContext = {
-    ...baseTabContext, window: tabTwoWindow, sessionStorage: tabTwoSession, localStorage: sharedDemoStorage
-  };
-  vm.runInNewContext(localAuthSource + '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;this.key=localSessionTabStorageKey;', tabTwoContext);
-  assert.equal(tabTwoContext.restore(), '', 'A new independent tab does not inherit another tab’s demo identity.');
-  tabTwoContext.persist('u3');
-  assert.notEqual(tabTwoContext.key(), tabOneKey, 'Each tab stores its demo identity under a different history-entry key.');
-  assert.equal(reloadedTabContext.restore(), 'u2', 'Signing in as another demo user in a second tab does not overwrite the first tab identity.');
+// When tab storage is unavailable, the simple localStorage copy restores the
+// most recently persisted demo identity and repopulates the tab store.
+const recoveredTabStorage = createMemoryStorage();
+const recoveredTabContext = {
+  ...firstTabContext,
+  sessionStorage: recoveredTabStorage
+};
+vm.runInNewContext(localAuthSource + '\\nthis.restore=restoreLocalSessionUser;', recoveredTabContext);
+assert.equal(recoveredTabContext.restore(), 'u3',
+  'The localStorage recovery copy works when sessionStorage is absent.');
+assert.equal(recoveredTabStorage.getItem('team-follow-up-local-auth-v2'), 'u3',
+  'Recovery repopulates sessionStorage for subsequent refreshes.');
 
-  reloadedTabContext.clear();
-  assert.equal(sharedDemoStorage.getItem(tabOneKey), null, 'Explicit sign-out removes only the current tab identity backup.');
-  assert.equal(reloadedTabHistory.state?.__TEAM_FOLLOW_UP_LOCAL_TAB_ID_V1__, undefined, 'Explicit sign-out clears the current history-entry tab marker.');
-  assert.equal(reloadedTabHistory.state?.__TEAM_FOLLOW_UP_LOCAL_USER_ID_V1__, undefined, 'Explicit sign-out clears the current history-entry user marker.');
-  assert.ok(!reloadedTabWindow.name.includes('__TEAM_FOLLOW_UP_LOCAL_USER_V1__'), 'Explicit sign-out clears the tab-name user marker.');
-  assert.ok(!String(reloadedTabHistory.lastUrl || '').includes('__team_follow_up_tab='), 'Explicit sign-out removes the URL tab marker as well as the stored identity.');
-  assert.equal(sharedDemoStorage.getItem(tabTwoContext.key()), 'u3', 'Signing out in one tab leaves the other tab session intact.');
-}
+// Explicit sign-out removes this tab's session and the shared recovery copy.
+// Other already-open tabs retain their own sessionStorage identity.
+refreshedTabContext.clear = firstTabContext.clear;
+refreshedTabContext.clear();
+assert.equal(refreshedTabStorage.getItem('team-follow-up-local-auth-v2'), null);
+assert.equal(sharedLocalStorage.getItem('team-follow-up-local-auth-v2'), null);
+assert.equal(secondTabStorage.getItem('team-follow-up-local-auth-v2'), 'u3',
+  'Signing out in one tab does not erase another tab’s already-established session.');
+
+// Legacy sessionStorage entries migrate forward once, without reviving the old
+// URL/history/window.name recovery implementation.
+const legacyTabStorage = createMemoryStorage();
+legacyTabStorage.setItem('team-follow-up-local-auth-v1', 'u4');
+const legacyContext = {
+  ...firstTabContext,
+  sessionStorage: legacyTabStorage,
+  localStorage: createMemoryStorage()
+};
+vm.runInNewContext(localAuthSource +
+  '\\nthis.restore=restoreLocalSessionUser;',
+  legacyContext);
+assert.equal(legacyContext.restore(), 'u4');
+assert.equal(legacyTabStorage.getItem('team-follow-up-local-auth-v2'), 'u4');
+assert.equal(legacyTabStorage.getItem('team-follow-up-local-auth-v1'), null);
 console.log('Session-refresh tests passed: persistent Cognito storage, transient auth recovery, user-specific page/tab/filter/scroll restoration, and no hydration route reset.');
