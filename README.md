@@ -28,7 +28,7 @@ The entered username is used only for sign-in; **Display name** is the name show
 ### Where does demo data go?
 
 - Work items, assignments, archive entries, and activity events are saved in the browser's `localStorage` for this site.
-- The demo sign-in session is stored in the current browser tab's `sessionStorage`.
+- The active demo identity is restored from the current tab's `sessionStorage` first. A same-origin `localStorage` copy is used only when the tab entry is missing; already-open tabs with valid tab sessions remain independent. A newly opened tab with no session can inherit the latest demo identity from that recovery copy.
 - Open tabs/windows using the same browser profile and same site origin receive compact same-origin change signals, so an assignment or item edit in one tab refreshes the affected Assigned Items/workspace views in the other tabs. The demo uses `BroadcastChannel` with a `localStorage` storage-event fallback; it does not send demo data or notifications over the internet.
 - Another browser profile, private window, browser, or device has a separate local workspace and does not receive these demo signals. For cross-device, multi-user real-time delivery, use the separate AWS deployment, which uses authenticated WebSockets and a durable change cursor.
 - The built-in workspace is intentionally large: **a few hundred work items and four Activity events per item**. It organizes the AWS project step by step across architecture, account/cost setup, Cognito, all four DynamoDB tables and five GSIs, IAM/Lambda, API Gateway, Amplify, frontend integration, lazy loading, archive/restore, CloudWatch, acceptance testing, recovery, and an isolated optional SAM/CloudFormation path.
