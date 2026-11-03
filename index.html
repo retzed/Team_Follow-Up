@@ -4521,7 +4521,7 @@ async function handleDemoRealtimeChange(change){
  const parentListChanged=topLevelIds.size>0||[...resolvedById.values()].some(item=>item.type==='project'||item.type==='job');
  if(parentListChanged)renderParentList({skipRemote:true});
  const selectedRootId=String(ui.selectedParentId||'');
- const selectedAffected=Boolean(selectedRootId&&(rootIds.has(selectedRootId)||updatedIds.has(selectedRootId)||deletedIds.has(selectedRootId)));
+ const selectedAffected=Boolean(selectedRootId&&(rootIds.has(selectedRootId)||itemIds.has(selectedRootId)));
  if(ui.page==='workspace'&&(selectedAffected||parentListChanged))renderDetail();
  if(ui.page==='account'&&ui.accountTab==='search'&&parentListChanged)renderAccountPage();
  const activityRootsToRefresh=new Set();
