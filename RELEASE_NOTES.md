@@ -1,5 +1,11 @@
 # Application Release Notes
 
+## 4 November 2026 — Preserve selected workspace item on refresh
+
+- Keep the saved parent selection while the startup data set is empty; reconcile it only when cached or fully hydrated parent records are available.
+- Refresh now returns to the same selected Project or Job instead of defaulting to the latest-updated parent.
+- Added regression coverage for empty-cache startup and post-hydration selection validation.
+
 ## 4 November 2026 — Browser-wide demo sign-in and tab-isolated views
 
 - The demo identity remains browser-profile scoped in `localStorage`, so all same-origin tabs use the same active demo identity and cross-tab sign-in/sign-out changes are synchronized.
