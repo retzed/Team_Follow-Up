@@ -150,6 +150,10 @@ const localAuthEnd = html.indexOf('\n screen.hidden=false;screen.lang=root.lang;
 assert.ok(localAuthStart >= 0 && localAuthEnd > localAuthStart,
   'The demo session implementation is a single extractable helper block.');
 const localAuthSource = html.slice(localAuthStart, localAuthEnd);
+assert.doesNotMatch(localAuthSource, /team-follow-up-local-auth-v1|LEGACY_LOCAL_SESSION_KEY/,
+  'The retired demo-session migration is not shipped.');
+assert.doesNotMatch(html, /for\(const storage of \[sessionStorage,localStorage\]\)/,
+  'Cognito initialization does not clear demo-session markers from tab-scoped storage.');
 assert.doesNotMatch(localAuthSource, /sessionStorage|window\.name|history\.state|history\.replaceState|location\.href|__team_follow_up_tab/,
   'Demo authentication is browser-profile based and does not consult tab-scoped or URL/history state.');
 assert.ok(localAuthSource.includes('localStorage.setItem(LOCAL_SESSION_KEY,userId)') &&
