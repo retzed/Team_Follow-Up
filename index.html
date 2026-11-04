@@ -4586,7 +4586,7 @@ async function handleDemoRealtimeChange(change){
   if(lastApiSnapshot){const merged=mergeActivityRows(lastApiSnapshot.activity||[],activityEvents);lastApiSnapshot.activity=merged.rows;}
   updateApplicationHistoryFromCommittedEvents(activityEvents);
  }
- if(topLevelIds.has(String(ui.selectedParentId||''))&&!data.parents.some(row=>String(row.id)===String(ui.selectedParentId))){
+ if(dataLoadState.parentsReady&&topLevelIds.has(String(ui.selectedParentId||''))&&!data.parents.some(row=>String(row.id)===String(ui.selectedParentId))){
   ui.selectedParentId=data.parents[0]?.id||'';
   ui.selectedAssignedItemId=null;
  }
