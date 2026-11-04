@@ -43,6 +43,10 @@ assert.doesNotMatch(hydrationHeader, /ui\.page='account';\s*ui\.accountTab='assi
   'Data refresh must not force the user back to Profile > Assigned Items.');
 assert.match(html, /if\(!ui\.selectedParentId&&data\.parents\.length\)[\s\S]*?meta\.done===true/,
   'Progressive bootstrap must preserve a selected parent until the complete parent set has been checked.');
+assert.match(html, /if\(!dataLoadState\.active&&data\.parents\.length&&!data\.parents\.some\(p=>p\.id===ui\.selectedParentId\)\)ui\.selectedParentId=data\.parents\[0\]\.id;/,
+  'Built-in startup must not erase the restored selection when its parent cache is empty.');
+assert.ok(html.includes("if(!data.parents.some(parent=>String(parent.id)===String(ui.selectedParentId)))ui.selectedParentId=data.parents[0]?.id||'';"),
+  'A missing selection is reconciled only after the complete hydrated parent set is available.');
 assert.ok(html.includes("else if(ui.accountTab==='pinned'&&!ui.accountPinnedLoaded)void loadAccountPinnedItems();"),
   'A restored Pinned Items page reloads its own data instead of switching tabs.');
 assert.ok(html.includes('restoredWorkspaceScrollY>0') && html.includes('window.scrollTo({top:restoredWorkspaceScrollY'),
