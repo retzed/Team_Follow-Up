@@ -2,9 +2,9 @@
 
 ## Scope and system boundary
 
-This repository is the **browser-local demonstration** of Team Follow-Up. It is a static site: GitHub Pages serves the HTML artifact, and application state lives in the visitor's browser. There is no application server, remote database, or shared multi-user workspace in this build.
+This repository is the **browser-local demonstration** of Follow-Up. It is a static site: GitHub Pages serves the HTML artifact, and application state lives in the visitor's browser. There is no application server, remote database, or shared multi-user workspace in this build.
 
-The production-oriented AWS implementation is maintained separately in the [Team Follow-Up AWS Deployment repository](https://github.com/retzed/Team_Follow-Up_AWS-Deployment). That repository has a Cognito-authenticated API and DynamoDB persistence; its security and deployment topology must not be inferred from this local demo.
+The production-oriented AWS implementation is maintained separately in the [Follow-Up AWS Deployment repository](https://github.com/retzed/Team_Follow-Up_AWS-Deployment). That repository has a Cognito-authenticated API and DynamoDB persistence; its security and deployment topology must not be inferred from this local demo.
 
 ## System context
 
@@ -14,7 +14,7 @@ flowchart TD
     Pages --> Browser[Browser runtime]
     Browser --> SignIn[Local demo sign-in]
     SignIn --> Context[Active demo teammate]
-    Context --> UI[Team Follow-Up UI]
+    Context --> UI[Follow-Up UI]
     UI --> Adapter[TeamFollowUpDataApi]
     Adapter --> LocalStore[(Browser localStorage)]
     Browser --> BrowserSession[(localStorage: shared browser-profile identity)]
