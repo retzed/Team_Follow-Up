@@ -165,9 +165,11 @@ assert.ok(html.includes('if(!persistLocalSessionUser(teamUserId)){'),
   'The demo refuses to enter the application unless persistent localStorage accepts and verifies the session.');
 assert.ok(html.indexOf('if(!persistLocalSessionUser(teamUserId)){') < html.indexOf('finishVisualAuth(makeLocalContext(teamUserId,username))'),
   'A successful local sign-in is persisted and verified before the application UI is started.');
-assert.ok(html.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)===userId') &&
-          html.includes('localStorage.getItem(LOCAL_SESSION_KEY)===userId'),
-  'Session writes are read back before being treated as durable.');
+assert.ok(localAuthSource.includes('storedAsBackup=localStorage.getItem(LOCAL_SESSION_KEY)===userId'),
+  'The persistent localStorage identity is read back and verified before sign-in succeeds.');
+assert.ok(localAuthSource.includes('sessionStorage.setItem(LOCAL_SESSION_KEY,userId)') &&
+          localAuthSource.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)!==userId'),
+  'The tab-specific identity is written and checked independently, without making it the durable session requirement.');
 assert.ok(html.includes("if(cfg.localAuth?.enabled===true&&!hasCognitoConfigurationAttempt()){initializeLocalAuth();return;}"),
   'The public demo selects local-session restoration before entering the Cognito flow.');
 
