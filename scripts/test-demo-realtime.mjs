@@ -92,6 +92,8 @@ vm.runInNewContext(helpers + '\nthis.createBuiltinRealtimeChange=createBuiltinRe
 const handlerStart = html.indexOf('async function handleDemoRealtimeChange(change){');
 const handlerEnd = html.indexOf('async function togglePinnedItem(itemId){', handlerStart);
 assert.ok(handlerStart >= 0 && handlerEnd > handlerStart, 'the demo real-time view handler must exist');
+assert.ok(html.includes("if(dataLoadState.parentsReady&&topLevelIds.has(String(ui.selectedParentId||''))&&!data.parents.some(row=>String(row.id)===String(ui.selectedParentId))){"),
+  'A real-time update arriving during bootstrap must not replace the selected parent while the parent list is still loading.');
 const handlerSource = html.slice(handlerStart, handlerEnd);
 
 function createHandlerContext(userId, loading = false, resolvedItems = [], activityEvents = []) {
