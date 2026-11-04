@@ -89,7 +89,7 @@ flowchart TD
 2. **Application logic:** selected item, creation/edit flows, filtering, hierarchy rules, state rendering, archive/restore selection, and activity formatting.
 3. **Data access layer:** the `TeamFollowUpDataAPI` interface exposes asynchronous operations so view logic does not directly manipulate every storage record.
 4. **Local adapter:** the current built-in adapter stores work items, team profiles, archive records, and activity events in `localStorage`. Index-like fields support list, hierarchy, assignment, and history queries.
-5. **Demo session:** `sessionStorage` remembers the active demo user for the current tab. It is not a secure authentication mechanism.
+5. **Demo session:** browser `localStorage` stores one active demo identity per browser profile and site origin. Tabs on that origin share the identity, and the browser `storage` event synchronizes sign-in and sign-out changes to open tabs. This is demonstration state, not secure authentication.
 
 The public repository intentionally contains no server deployment stack. A future server can implement equivalent operations behind the data access boundary; that implementation should not require the UI to know which host or database is used.
 
