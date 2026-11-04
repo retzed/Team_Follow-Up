@@ -1,5 +1,11 @@
 # Application Release Notes
 
+## 4 November 2026 — Keep off-page parent selections during refresh
+
+- The first page of top-level Projects/Jobs is no longer treated as the complete parent set. Bootstrap follows every continuation page before validating the saved selection.
+- This prevents a selected parent beyond the first 100 updated records from being replaced by the newest parent during refresh.
+- The same paginated bootstrap path is used for local demo data and API-backed mode; per-tab `sessionStorage` isolation is unchanged.
+
 ## 4 November 2026 — Preserve selected workspace item on refresh
 
 - Keep the saved parent selection while the startup data set is empty; reconcile it only when cached or fully hydrated parent records are available.
