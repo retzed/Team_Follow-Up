@@ -18,6 +18,7 @@ flowchart TD
     UI --> Adapter[TeamFollowUpDataApi]
     Adapter --> LocalStore[(Browser localStorage)]
     Browser --> BrowserSession[(localStorage: shared browser-profile identity)]
+    Browser --> TabView[(sessionStorage: per-tab view state)]
     LocalStore --> Items[Work items and hierarchy]
     LocalStore --> Activity[Activity events]
     LocalStore --> Profiles[Built-in team profiles]
@@ -107,6 +108,7 @@ Regression tests cover the event-propagation boundary, cyclic and deep hierarchy
 
 - Workspaces persist in `localStorage` for the site's origin and browser profile.
 - `localStorage` is the only source of the demo identity. The single browser-profile record is shared by every tab on this site origin and persists through page refreshes, tab closure, and browser restarts.
+- Each tab stores its own page/view snapshot in `sessionStorage`, including selected items, tabs, filters, expanded rows, and scroll position. A hard refresh restores that tab's snapshot; other tabs cannot read or replace it. View state is never written to browser-wide `localStorage`.
 - Signing in or out in one tab updates the shared record. Other open tabs receive the browser `storage` event and switch to the new identity or return to sign-in. There is no tab-specific authentication state.
 - Separate browser profiles and private-browsing contexts have separate website storage and therefore separate demo sessions. Clearing this site's website data removes the identity; clearing only navigation history may not remove site storage, depending on the browser's selected clearing options.
 - Because the demo dataset itself is stored in `localStorage`, browsers that block persistent site storage cannot run this browser-local demo reliably; the sign-in gate stays closed and reports the storage problem rather than allowing a session that will be lost on refresh.
