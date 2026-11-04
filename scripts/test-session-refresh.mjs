@@ -212,9 +212,8 @@ assert.equal(browserContextB.restore(), '',
 
 // Migrate the old browser-local v1 key forward without consulting sessionStorage.
 const legacyBrowserStorage = createMemoryStorage([['team-follow-up-local-auth-v1', 'u5']]);
-const legacyBrowserContext = { ...browserContextA, localStorage: legacyBrowserStorage };
-vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', legacyBrowserContext);
-assert.equal(legacyBrowserContext.restore(), 'u5');
+browserContextA.localStorage = legacyBrowserStorage;
+assert.equal(browserContextA.restore(), 'u5');
 assert.equal(legacyBrowserStorage.getItem('team-follow-up-local-auth-v2'), 'u5');
 assert.equal(legacyBrowserStorage.getItem('team-follow-up-local-auth-v1'), null);
 console.log('Session-refresh tests passed: persistent browser-profile identity, shared same-origin tabs, separate profile isolation, legacy migration, explicit sign-out, and no tab-scoped authentication.');
