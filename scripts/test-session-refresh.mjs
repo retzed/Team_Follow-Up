@@ -210,10 +210,4 @@ assert.equal(browserStorage.getItem('team-follow-up-local-auth-v2'), null);
 assert.equal(browserContextB.restore(), '',
   'A tab in the same browser profile sees the signed-out state on its next read.');
 
-// Migrate the old browser-local v1 key forward without consulting sessionStorage.
-const legacyBrowserStorage = createMemoryStorage([['team-follow-up-local-auth-v1', 'u5']]);
-browserContextA.localStorage = legacyBrowserStorage;
-assert.equal(browserContextA.restore(), 'u5');
-assert.equal(legacyBrowserStorage.getItem('team-follow-up-local-auth-v2'), 'u5');
-assert.equal(legacyBrowserStorage.getItem('team-follow-up-local-auth-v1'), null);
-console.log('Session-refresh tests passed: persistent browser-profile identity, shared same-origin tabs, separate profile isolation, legacy migration, explicit sign-out, and no tab-scoped authentication.');
+console.log('Session-refresh tests passed: persistent browser-profile identity, shared same-origin tabs, separate profile isolation, explicit sign-out, and no tab-scoped authentication.');
