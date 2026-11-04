@@ -155,6 +155,7 @@ A login only sets the acting demonstration identity. It does not protect a user 
 | `scripts/test-data-api.mjs` | Regression checks for the data-access adapter and local persistence behavior |
 | `scripts/test-demo-build.mjs` | Ensures the public artifact has demo auth/data settings and no remote API credentials/configuration |
 | `scripts/test-output-escaping.mjs` | Exercises the central HTML-output escaping helper |
+| `scripts/test-session-refresh.mjs` | Verifies browser-wide demo identity continuity alongside independent per-tab view restoration, legacy tab-state migration, and sign-out cleanup. |
 | `scripts/test-activity-write-coverage.mjs` | Checks that item mutations maintain activity history |
 | `scripts/test-activity-merge-idempotency.mjs` | Checks duplicate activity merge behavior |
 | `scripts/test-history-structure.mjs` | Checks history scope, structure, and display contract |
@@ -206,6 +207,7 @@ The local adapter emulates common access patterns using derived fields for top-l
 
 - `localStorage` stores the demo workspace and its built-in logical tables.
 - `localStorage` is the only demo-session store. One browser-profile identity is shared across every tab on this site origin and survives refreshes, tab closure, and browser restarts. Signing in or out in one tab updates all other open tabs. Separate browser profiles and private sessions are isolated. Clearing this site's website data removes the identity; clearing history alone may not remove website storage unless the browser's clearing options include it.
+- **View state is tab-scoped:** each tab stores its own page, selected item, workspace/account tab, filters, expanded rows, and scroll position in `sessionStorage`. Refreshing that tab restores its state; other tabs do not read, overwrite, or inherit it. A newly opened tab starts from the application defaults. Older v1 snapshots are migrated only from that same tab's `sessionStorage`; the legacy browser-wide view snapshot is ignored.
 - Demo users within the same browser profile see the same local workspace.
 - Built-in item mutations create a compact change signal containing affected item, hierarchy, and previous/current assignee IDs. The writer persists the merged snapshot before publishing the signal through `BroadcastChannel`; the browser `storage` event is the fallback transport.
 - Cross-tab writes use the Web Locks API when available to serialize the read/merge/write critical section. A tab merges only the item IDs and profile IDs it actually changed into the latest persisted snapshot; it never replaces the complete workspace with a stale in-memory snapshot. This prevents a write from one tab from silently erasing unrelated updates made by another tab.
