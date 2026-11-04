@@ -292,6 +292,8 @@ Each account Search result has separate **Open in workspace**, **Activity histor
 
 ### Workspace navigation and history loading
 
+When a tab has no saved Project/Job selection, startup selects the top-level item with the greatest valid `updatedAt` timestamp; it does not rely on the API response or array order. `createdAt` is used only when an item has no valid update timestamp, and as a deterministic tie-breaker. A valid selection already saved for this tab is still preserved across refresh. If a saved parent is confirmed deleted, the replacement is chosen using the same most-recently-updated rule.
+
 Opening a Project or Job from Search switches from My Account to the workspace view, selects the requested parent, and begins the parent's child-item hydration. Opening an assigned or pinned child resolves its root Project/Job, switches to the workspace, loads that root's children, expands Task ancestors after the hierarchy is available, and scrolls the selected child into view. Ancestor expansion is deliberately repeated after lazy loading: a parent Task may not be present in the account list's initial cache if it is assigned to another teammate.
 
 Expanding the workspace Search sidebar preserves the selected root and selected child. It restores the parent/detail view immediately, refreshes the selected root's children when needed, and restores the selected child position when the hierarchy finishes loading. A failed lazy request is logged and leaves the standard data-load retry path available rather than intentionally replacing a valid selection with a blank view.
