@@ -1,4 +1,4 @@
-# Project Guide — Team Follow-Up Application
+# Project Guide — Follow-Up
 
 This guide explains how to access the demo, run the application, understand its architecture, work on the code, validate changes, and publish the static demo. It describes the current public project as it is today: a self-contained browser app with demo authentication and browser-local persistence. For the full application reference, see [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md).
 
@@ -72,7 +72,7 @@ flowchart TD
     UI --> ChildItems[Tasks and follow-ups]
     UI --> Activity[Item and application-wide activity history]
     UI --> Archive[Archive and restore]
-    Overview --> DataAPI[Team Follow-Up data access interface]
+    Overview --> DataAPI[Follow-Up data access interface]
     ChildItems --> DataAPI
     Activity --> DataAPI
     Archive --> DataAPI
