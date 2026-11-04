@@ -1983,16 +1983,12 @@ function readTables(includeActivity=false){
   const userRows=Array.isArray(profiles)?profiles:(profiles?.users||profiles?.items||[]);
   snapshot.users=userRows.map(user=>user?.id?user:toAppUser(user));
   notify(snapshot,'users',{done:true});
-  if(mode==='api'){
-   const top=await requestCachedGet('/items?scope=top-level&dateMode=updated&direction=desc','top-level-items');
-   snapshot.parents=(top?.items||[]).map(item=>item?.id?item:toAppItem(item)).filter(item=>['project','job'].includes(item.type));
-   notify(snapshot,'parents-page',{done:true,count:snapshot.parents.length,nextOffset:null});
-  }else{
-   await fetchPagedItems('/items?scope=top-level&dateMode=updated&direction=desc',(page,result,total)=>{
-    snapshot.parents=[...new Map([...snapshot.parents,...page].map(row=>[String(row.id),row])).values()];
-    notify(snapshot,'parents-page',{done:result.nextOffset===undefined||result.nextOffset===null,count:total,nextOffset:result.nextOffset??null});
-   },100);
-  }
+  // Load every top-level page before declaring the parent list complete. A
+  // restored selection may be beyond the first page when the workspace is large.
+  await fetchPagedItems('/items?scope=top-level&dateMode=updated&direction=desc',(page,result,total)=>{
+   snapshot.parents=[...new Map([...snapshot.parents,...page].map(row=>[String(row.id),row])).values()];
+   notify(snapshot,'parents-page',{done:result.nextOffset===undefined||result.nextOffset===null,count:total,nextOffset:result.nextOffset??null});
+  },100);
   notify(snapshot,'parents-complete',{done:true,count:snapshot.parents.length});
   notify(snapshot,'complete',{done:true,count:snapshot.parents.length});
   return snapshot;
