@@ -2137,6 +2137,113 @@ function readTables(includeActivity=false){
   try{localStorage.removeItem(LOCAL_SESSION_KEY);}
   catch(error){console.warn('The browser-wide demo sign-in could not be cleared.',error);}
  }
+ screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;
+ const ar=root.lang==='ar';
+ const copy=ar?{
+  brand:'العمل، بتناغم.',title:'تسجيل الدخول',subtitle:'أدخل بيانات حساب الفريق للمتابعة.',localWarning:'تسجيل الدخول التجريبي المحلي مفعّل. استخدم اسم أحد أعضاء الفريق وكلمة مرور غير فارغة. هذا ليس تسجيل دخول حقيقياً ولا يحمي البيانات.',storageUnavailable:'تعذّر حفظ جلسة تسجيل الدخول في تخزين المتصفح. فعّل تخزين الموقع في المتصفح ثم حاول مرة أخرى.',localUnknownUser:'اسم المستخدم غير معروف. أدخل اسم أحد أعضاء الفريق المعرّفين في التطبيق.',username:'اسم المستخدم',password:'كلمة المرور',usernamePlaceholder:'أدخل اسم المستخدم',passwordPlaceholder:'أدخل كلمة المرور',submit:'تسجيل الدخول',forgot:'نسيت كلمة المرور؟',unknown:'تعذّر تسجيل الدخول. تحقّق من بياناتك وحاول مرة أخرى.',needPassword:'أدخل كلمة المرور للمتابعة.',configure:'تسجيل الدخول المتصل غير متاح في نسخة العرض المحلية. استخدم أحد أسماء أعضاء الفريق التجريبيين.',configureIncomplete:'إعداد تسجيل الدخول المتصل غير مكتمل. استخدم نسخة العرض المحلية أو أكمل إعداد موفر الهوية في إصدار آخر.',loading:'جارٍ تهيئة المصادقة…',sdkError:'تعذّر تحميل مكوّن المصادقة. تحقّق من الاتصال وأعد تحميل الصفحة.',notLinked:'تم تسجيل الدخول، لكن الحساب غير مرتبط بعضو فريق. اطلب من مسؤول المشروع ربط الحساب.',code:'رمز التحقق',newPassword:'كلمة المرور الجديدة',newPasswordPlaceholder:'أنشئ كلمة مرور جديدة',enterCode:'أدخل رمز التحقق',resetSent:'إذا كان الحساب مؤهلاً للاسترداد، فستصلك تعليمات إعادة تعيين كلمة المرور. أدخل رمز التأكيد وكلمة المرور الجديدة.',reset:'إعادة تعيين كلمة المرور',resetDone:'تم تحديث كلمة المرور. سجّل الدخول بكلمة المرور الجديدة.',needCode:'أدخل رمز التحقق.',chooseFactor:'اختر طريقة التحقق',factorPassword:'كلمة المرور',factorEmail:'رمز البريد الإلكتروني',factorSms:'رمز الرسائل النصية',factorTotp:'تطبيق المصادقة',setupTotp:'أضف الحساب إلى تطبيق المصادقة باستخدام بيانات الإعداد أدناه، ثم أدخل الرمز الناتج.',setupEmail:'أدخل عنوان البريد الإلكتروني لإكمال إعداد التحقق.',confirmUser:'هذا الحساب بحاجة إلى تأكيد من المسؤول. تواصل مع مسؤول النظام.',unknownChallenge:'تتطلب إعدادات الحساب خطوة تحقق غير مدعومة هنا. تواصل مع مسؤول النظام.',signOut:'تسجيل الخروج',apiNotReady:'تم تسجيل الدخول، لكن عنوان API لم يُضبط بعد؛ عمليات البيانات لا تزال محلية حتى توصيل الواجهة الخلفية.'
+ }:{
+  brand:'Work, connected.',title:'Sign in',subtitle:'Enter your team account credentials to continue.',localWarning:'Local demo sign-in is enabled. Use a built-in team username and any non-empty password. This is not real authentication and does not protect data.',storageUnavailable:'The browser could not save the sign-in session. Enable site storage in your browser and try again.',localUnknownUser:'Unknown team username. Enter the name of one of the six configured team members.',username:'Username',password:'Password',usernamePlaceholder:'Enter username',passwordPlaceholder:'Enter password',submit:'Sign in',forgot:'Forgot password?',unknown:'Sign-in failed. Check your credentials and try again.',needPassword:'Enter your password to continue.',configure:'Connected sign-in is not available in the local demo build. Use one of the built-in team usernames.',configureIncomplete:'Connected sign-in settings are incomplete. Use the local demo build or finish configuring an identity provider in another release.',loading:'Preparing authentication…',sdkError:'The authentication library could not be loaded. Check your connection and reload the page.',notLinked:'Your account authenticated successfully but is not linked to a team profile. Ask the project administrator to link this account.',code:'Verification code',newPassword:'New password',newPasswordPlaceholder:'Create a new password',enterCode:'Enter verification code',resetSent:'If the account can be recovered, password-reset instructions were sent. Enter the confirmation code and a new password.',reset:'Reset password',resetDone:'Your password was updated. Sign in with the new password.',needCode:'Enter the verification code.',chooseFactor:'Choose a verification method',factorPassword:'Password',factorEmail:'Email code',factorSms:'SMS code',factorTotp:'Authenticator app',setupTotp:'Add this account to your authenticator app using the setup details below, then enter the generated code.',setupEmail:'Enter your email address to finish setting up verification.',confirmUser:'This account requires administrator confirmation. Contact your administrator.',unknownChallenge:'Your account requires a sign-in step that this page cannot complete. Contact your administrator.',signOut:'Sign out',apiNotReady:'Signed in, but the API URL is not configured yet; data operations remain local until the backend is connected.'
+ };
+ const norm=v=>String(v??'').trim().normalize('NFKC').toLocaleLowerCase();
+ function setError(message){const el=$('signInError');el.textContent=message||'';el.hidden=!message;}
+ function setBusy(busy,label){state.submitting=busy;$('signInSubmit').disabled=busy||(state.authMode!=='local'&&!state.modules);$('signInSubmit').textContent=label||(state.mode==='signIn'?copy.submit:state.mode==='resetConfirm'?copy.reset:copy.submit);$('signInForgotPassword').hidden=state.authMode==='local'||state.mode!=='signIn';}
+ function baseFieldMode(){
+  const input=$('signInPassword');const choice=$('signInChallengeSelect');
+  input.hidden=false;input.required=true;input.disabled=false;input.value='';input.type='password';input.autocomplete='current-password';input.inputMode='text';choice.hidden=true;choice.disabled=true;choice.innerHTML='';
+  $('signInPasswordLabel').textContent=copy.password;input.placeholder=copy.passwordPlaceholder;
+  $('signInChallengeField').hidden=true;$('signInChallengeInput').value='';$('signInChallengeHelp').hidden=true;$('signInChallengeHelp').textContent='';
+ }
+ function enterDefaultMode(){
+  state.mode='signIn';state.pendingUser='';state.nextStep=null;baseFieldMode();
+  $('signInUsername').closest('.signin-field').hidden=false;
+  $('signInPassword').closest('.signin-field').hidden=false;
+  $('signInChallengeField').hidden=true;$('signInChallengeInput').required=false;
+  $('signInChallengeHelp').hidden=true;$('signInForgotPassword').hidden=false;
+  $('signInSubmit').hidden=false;$('signInRetrySession').hidden=true;
+  $('signInSubmit').textContent=copy.submit;setError('');setBusy(false);
+ }
+ function enterSessionRestoreMode(){
+  state.mode='restore';state.pendingUser='';state.nextStep=null;
+  $('signInUsername').closest('.signin-field').hidden=true;
+  $('signInPassword').closest('.signin-field').hidden=true;
+  $('signInChallengeField').hidden=true;$('signInChallengeInput').required=false;
+  $('signInChallengeHelp').hidden=true;$('signInForgotPassword').hidden=true;
+  $('signInSubmit').hidden=true;$('signInRetrySession').hidden=false;
+  $('signInRetrySession').disabled=false;
+  $('signInRetrySession').textContent=ar?'إعادة محاولة استعادة الجلسة':'Retry session restoration';
+  setError(ar?'تعذرت استعادة جلسة تسجيل الدخول بسبب مشكلة اتصال. أعد المحاولة دون تسجيل الخروج.':'The sign-in session could not be restored because of a connection or temporary service error. Retry without signing out.');
+  setBusy(false);
+ }
+ function isDefinitiveSessionError(error){
+  const name=String(error?.name||'');
+  const message=String(error?.message||'');
+  return message==='NO_VALID_SESSION'||/UserUnAuthenticatedException|InvalidRefreshTokenException|RefreshTokenReuseException|NotAuthorizedException/.test(name);
+ }
+ function setChallengeField(label,placeholder,opts={}){
+  const input=$('signInChallengeInput');$('signInChallengeField').hidden=false;$('signInChallengeLabel').textContent=label;input.placeholder=placeholder;input.type=opts.type||'text';input.autocomplete=opts.autocomplete||'one-time-code';input.inputMode=opts.inputMode||'text';input.required=true;input.value='';
+ }
+ function beginCodeChallenge(nextStep){
+  state.mode='challenge';state.nextStep=nextStep;state.pendingUser=$('signInUsername').value.trim();baseFieldMode();
+  $('signInPassword').hidden=true;$('signInPassword').required=false;
+  const step=nextStep.signInStep;
+  let label=copy.code, hint='';
+  if(step==='CONTINUE_SIGN_IN_WITH_EMAIL_SETUP'){label=copy.username;hint=copy.setupEmail;$('signInChallengeInput').type='email';}
+  if(step==='CONTINUE_SIGN_IN_WITH_TOTP_SETUP'){
+   hint=copy.setupTotp;let details='';try{const uri=nextStep.totpSetupDetails?.getSetupUri?.(state.pendingUser);details=uri?String(uri):String(nextStep.totpSetupDetails?.sharedSecret||'');}catch(e){}
+   if(details)hint+='\n'+(ar?'بيانات الإعداد: ':'Setup details: ')+details;
+  }
+  setChallengeField(label,step==='CONTINUE_SIGN_IN_WITH_EMAIL_SETUP'?(ar?'أدخل البريد الإلكتروني':'Enter email address'):copy.enterCode,{type:step==='CONTINUE_SIGN_IN_WITH_EMAIL_SETUP'?'email':'text',inputMode:step==='CONTINUE_SIGN_IN_WITH_EMAIL_SETUP'?'email':'numeric'});
+  if(hint){$('signInChallengeHelp').textContent=hint;$('signInChallengeHelp').hidden=false;}
+  $('signInForgotPassword').hidden=true;$('signInSubmit').textContent=ar?'متابعة':'Continue';setBusy(false);setError('');
+ }
+ function beginChoiceChallenge(nextStep){
+  state.mode='choice';state.nextStep=nextStep;state.pendingUser=$('signInUsername').value.trim();baseFieldMode();$('signInPassword').hidden=true;$('signInPassword').required=false;$('signInChallengeField').hidden=true;
+  const select=$('signInChallengeSelect');select.hidden=false;select.disabled=false;select.required=true;
+  const step=nextStep.signInStep;let opts=[];
+  if(step==='CONTINUE_SIGN_IN_WITH_FIRST_FACTOR_SELECTION')opts=(nextStep.availableChallenges||[]).map(x=>({value:x,label:({PASSWORD:'Password',PASSWORD_SRP:'Password',EMAIL_OTP:copy.factorEmail,SMS_OTP:copy.factorSms,WEB_AUTHN:'Passkey',PASSWORDLESS:'Passwordless'})[x]||x}));
+  else opts=(nextStep.allowedMFATypes||[]).map(x=>({value:x,label:({EMAIL:copy.factorEmail,SMS:copy.factorSms,TOTP:copy.factorTotp})[x]||x}));
+  if(!opts.length){state.mode='unsupported';setError(copy.unknownChallenge);setBusy(false);return;}
+  select.innerHTML=opts.map((o,i)=>`<option value="${String(o.value).replace(/[&<>\"]/g,'')}" ${i===0?'selected':''}>${String(o.label).replace(/[&<>\"]/g,'')}</option>`).join('');
+  $('signInPasswordLabel').textContent=copy.chooseFactor;$('signInForgotPassword').hidden=true;$('signInSubmit').textContent=ar?'متابعة':'Continue';setBusy(false);setError('');
+ }
+ function beginNewPassword(nextStep){state.mode='newPassword';state.nextStep=nextStep;state.pendingUser=$('signInUsername').value.trim();baseFieldMode();$('signInPasswordLabel').textContent=copy.newPassword;$('signInPassword').placeholder=copy.newPasswordPlaceholder;$('signInPassword').autocomplete='new-password';$('signInForgotPassword').hidden=true;$('signInSubmit').textContent=ar?'تحديث كلمة المرور':'Update password';setBusy(false);setError('');}
+ async function beginPasswordReset(){
+  if(!state.modules)return;
+  const username=$('signInUsername').value.trim();if(!username){setError(ar?'أدخل اسم المستخدم أولاً.':'Enter your username first.');$('signInUsername').focus();return;}
+  setBusy(true,ar?'جارٍ إرسال الرمز…':'Sending code…');setError('');
+  try{const result=await state.modules.resetPassword({username});if(result?.nextStep?.resetPasswordStep==='DONE'){enterDefaultMode();setError(ar?'إذا كان الحساب مؤهلاً، فقد تم تحديث حالة استعادة كلمة المرور.':'Password recovery is already complete for this account.');return;}state.pendingUser=username;state.mode='resetConfirm';baseFieldMode();$('signInPasswordLabel').textContent=copy.newPassword;$('signInPassword').placeholder=copy.newPasswordPlaceholder;$('signInPassword').autocomplete='new-password';$('signInChallengeField').hidden=false;$('signInChallengeLabel').textContent=copy.code;$('signInChallengeInput').placeholder=copy.enterCode;$('signInChallengeInput').required=true;$('signInForgotPassword').hidden=true;$('signInSubmit').textContent=copy.reset;setError(copy.resetSent);}
+  catch(e){setError(copy.unknown);}
+  finally{setBusy(false);}
+ }
+ function isConfigured(){return !!(typeof cognito.userPoolId==='string'&&/^[-\w]+_[A-Za-z0-9]+$/.test(cognito.userPoolId)&&typeof cognito.userPoolClientId==='string'&&cognito.userPoolClientId.length>8&&!/REPLACE|YOUR_|<|>/i.test(cognito.userPoolClientId)&&!/REPLACE|YOUR_|<|>/i.test(cognito.userPoolId));}
+ function hasCognitoConfigurationAttempt(){const pool=String(cognito.userPoolId||'').trim();const client=String(cognito.userPoolClientId||'').trim();const meaningful=v=>!!v&&!/REPLACE|YOUR_|<|>/i.test(v);return meaningful(pool)||meaningful(client); }
+ const localTeamUsers=[
+  {id:'u1',aliases:['Marwa','مروة']},
+  {id:'u2',aliases:['Zyad','زياد']},
+  {id:'u3',aliases:['Nadine','نادين']},
+  {id:'u4',aliases:['Omar','عمر']},
+  {id:'u5',aliases:['Haneen','حنين']},
+  {id:'u6',aliases:['Dina','دينا']},
+  {id:'root',aliases:['root']}
+ ];
+ function resolveLocalTeamUserId(username){const value=norm(username);for(const user of localTeamUsers){if(user.aliases.some(alias=>norm(alias)===value))return user.id;}return null;}
+ const LOCAL_PASSWORD_STORE='team-follow-up-local-password-hashes-v1';
+function localBytesToBase64(bytes){let out='';for(const byte of bytes)out+=String.fromCharCode(byte);return btoa(out);}
+async function localPasswordHash(password,salt,iterations=210000){const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveBits']);const saltBytes=Uint8Array.from(atob(salt),ch=>ch.charCodeAt(0));const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:saltBytes,iterations,hash:'SHA-256'},key,256);return localBytesToBase64(new Uint8Array(bits));}
+function localPasswordRecord(userId){try{const all=JSON.parse(localStorage.getItem(LOCAL_PASSWORD_STORE)||'{}');return all[userId]||null;}catch{return null;}}
+async function saveLocalPasswordRecord(userId,password){const salt=localBytesToBase64(crypto.getRandomValues(new Uint8Array(16))),iterations=210000,hash=await localPasswordHash(String(password||''),salt,iterations);const all=(()=>{try{return JSON.parse(localStorage.getItem(LOCAL_PASSWORD_STORE)||'{}');}catch{return {};}})();all[userId]={salt,iterations,hash,algorithm:'PBKDF2-SHA256'};localStorage.setItem(LOCAL_PASSWORD_STORE,JSON.stringify(all));}
+const ROOT_LOCAL_PASSWORD={iterations:210000,salt:'VGVhbUZvbGxvd1VwUm9vdFNhbHRWMQ==',hash:'vus7geP6u8jAJ8aW4c9Tbr67bQeTyefapvul/anxoKo='};
+async function verifyLocalPassword(userId,password){const input=String(password||'');if(!input)return false;const stored=localPasswordRecord(userId);const record=stored||(userId==='root'?ROOT_LOCAL_PASSWORD:null);if(!record&&userId!=='root'){await saveLocalPasswordRecord(userId,input);return true;}try{const valid=(await localPasswordHash(input,record.salt,record.iterations))===record.hash;if(valid&&!stored)await saveLocalPasswordRecord(userId,input);return valid;}catch{return false;}}
+async function setLocalPassword(userId,oldPassword,newPassword){if(!await verifyLocalPassword(userId,oldPassword))throw new Error(root.lang==='ar'?'كلمة المرور الحالية غير صحيحة.':'The current password is incorrect.');await saveLocalPasswordRecord(userId,newPassword);}
+function uiCopyLocalPasswordIncorrect(){return root.lang==='ar'?'كلمة المرور الحالية غير صحيحة.':'The current password is incorrect.';}
+function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'local',localAuth:true,localUsername:String(username||''),changePassword:(oldPassword,newPassword)=>setLocalPassword(teamUserId,oldPassword,newPassword),verifyPassword:password=>verifyLocalPassword(teamUserId,password),getAccessToken:async()=>{throw new Error('Local demo sign-in does not issue server access tokens. The public demo uses browser-local data only.');}};}
+ function initializeLocalAuth(){
+  state.authMode='local';state.modules=null;state.mode='signIn';state.submitting=false;
+  $('signInModeNote').textContent=copy.localWarning;$('signInModeNote').hidden=false;
+  $('signInForgotPassword').hidden=true;$('signInSubmit').disabled=false;setError('');enterDefaultMode();
+  const saved=restoreLocalSessionUser();if(validIds.includes(saved)){finishVisualAuth(makeLocalContext(saved,localTeamUsers.find(u=>u.id===saved)?.aliases[0]||''));return;}
+  $('signInUsername').value='';$('signInPassword').value='';$('signInSubmit').disabled=false;$('signInForgotPassword').hidden=true;$('signInUsername').focus({preventScroll:true});
+ }
  function resolveTeamUserId(user,attributes){
   const customName=String(cognito.teamUserAttribute||'custom:teamUserId');const custom=String(attributes?.[customName]||'').trim();if(validIds.includes(custom))return custom;
   const map=cognito.identityMap&&typeof cognito.identityMap==='object'?cognito.identityMap:{};
