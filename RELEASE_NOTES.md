@@ -1,12 +1,11 @@
 # Application Release Notes
 
-## 4 November 2026 — Browser-wide demo sign-in
+## 4 November 2026 — Browser-wide demo sign-in and tab-isolated views
 
-- Removed tab-scoped authentication storage. The public demo stores exactly one active demo identity in `localStorage` for the browser profile and site origin.
-- The identity survives page refreshes, tab closure, and browser restarts until website data for the site is cleared.
-- All tabs in the same browser profile share the same signed-in demo user. Signing in or out in one tab updates other open tabs through the browser `storage` event.
-- Separate browser profiles and private sessions remain isolated.
-- Added regression coverage for hard reloads without `sessionStorage`, same-profile multi-tab changes, cross-tab sign-out, and separate profile isolation.
+- The demo identity remains browser-profile scoped in `localStorage`, so all same-origin tabs use the same active demo identity and cross-tab sign-in/sign-out changes are synchronized.
+- Workspace/page view state now uses a versioned `sessionStorage` key, scoped to the current tab and team identity. Refreshing a tab restores its own page, selection, filters, expanded rows, and scroll position without changing another tab.
+- The old shared `localStorage` view-state fallback has been removed. Legacy v1 data is migrated only from the current tab's `sessionStorage`; old browser-wide view snapshots are ignored.
+- Regression coverage now verifies two tabs with different views, refresh restoration, no cross-tab view inheritance/overwrite, legacy tab-state migration, and tab-local sign-out cleanup.
 
 This remains demonstration sign-in, not secure authentication. The public GitHub Pages build has no server-managed session or production account security.
 ## 3 November 2026 — Real-time Activity history
