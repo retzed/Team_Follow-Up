@@ -1,6 +1,6 @@
-# Team Follow-Up Application — Complete Documentation
+# Follow-Up — Complete Documentation
 
-This document describes the current implementation in the **Team Follow-Up demo application repository**. It covers the product behavior, data model, code organization, local execution, regression testing, deployment, and security boundaries.
+This document describes the current implementation in the **Follow-Up demo application repository**. It covers the product behavior, data model, code organization, local execution, regression testing, deployment, and security boundaries.
 
 - Demo repository: https://github.com/retzed/Team_Follow-Up
 - Hosted demo: https://retzed.github.io/Team_Follow-Up/
@@ -12,7 +12,7 @@ The demo and AWS-backed application have intentionally different persistence and
 
 ## 1. Product overview
 
-Team Follow-Up is a bilingual workspace for following project work, temporary jobs, tasks, follow-ups, assignments, priorities, and activity history. It offers responsive desktop/mobile layouts, English/Arabic interface labels, right-to-left support, light/dark themes, search, assignment views, and hierarchy-aware archive/restore behavior.
+Follow-Up is a bilingual workspace for following project work, temporary jobs, tasks, follow-ups, assignments, priorities, and activity history. It offers responsive desktop/mobile layouts, English/Arabic interface labels, right-to-left support, light/dark themes, search, assignment views, and hierarchy-aware archive/restore behavior.
 
 ### Built-in demonstration profiles
 
