@@ -2116,8 +2116,7 @@ function readTables(includeActivity=false){
   const userId=String(teamUserId||'');
   if(!validIds.includes(userId))return false;
   // One browser-profile identity is shared by every tab for this site origin.
-  // localStorage survives reloads and browser restarts; no tab-scoped storage,
-  // window.name, URL fragment, or History API state participates in auth.
+  // Authentication state is browser-profile scoped, not page-instance scoped.
   try{
    localStorage.setItem(LOCAL_SESSION_KEY,userId);
    return localStorage.getItem(LOCAL_SESSION_KEY)===userId;
