@@ -150,110 +150,76 @@ const localAuthEnd = html.indexOf('\n screen.hidden=false;screen.lang=root.lang;
 assert.ok(localAuthStart >= 0 && localAuthEnd > localAuthStart,
   'The demo session implementation is a single extractable helper block.');
 const localAuthSource = html.slice(localAuthStart, localAuthEnd);
-assert.doesNotMatch(localAuthSource, /window\.name|history\.state|history\.replaceState|location\.href|__team_follow_up_tab/,
-  'Demo identity restoration does not depend on browser-specific tab metadata or URL markers.');
-assert.ok(localAuthSource.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)') &&
-          localAuthSource.includes('localStorage.getItem(LOCAL_SESSION_KEY)'),
-  'An existing tab session is checked first, with a persistent origin-local recovery copy as fallback.');
-assert.ok(localAuthSource.includes('if(!storedAsBackup)return false;'),
-  'A demo sign-in is rejected unless localStorage accepts and verifies the persistent session record.');
-assert.ok(localAuthSource.indexOf('if(!storedAsBackup)return false;') < localAuthSource.indexOf('sessionStorage.setItem(LOCAL_SESSION_KEY,userId)'),
-  'The tab-only session is not written before durable browser storage has been verified.');
+assert.doesNotMatch(localAuthSource, /sessionStorage|window\.name|history\.state|history\.replaceState|location\.href|__team_follow_up_tab/,
+  'Demo authentication is browser-profile based and does not consult tab-scoped or URL/history state.');
+assert.ok(localAuthSource.includes('localStorage.setItem(LOCAL_SESSION_KEY,userId)') &&
+          localAuthSource.includes('localStorage.getItem(LOCAL_SESSION_KEY)===userId'),
+  'A demo sign-in is persisted and read back from the shared browser-profile store.');
+assert.ok(localAuthSource.includes("localStorage.getItem(LOCAL_SESSION_KEY)||''"),
+  'Startup restores the browser-wide identity directly from localStorage.');
+assert.ok(localAuthSource.includes('localStorage.removeItem(LOCAL_SESSION_KEY)'),
+  'Explicit sign-out removes the shared browser-profile identity.');
 assert.ok(html.includes("const saved=restoreLocalSessionUser();if(validIds.includes(saved)){finishVisualAuth(makeLocalContext(saved,localTeamUsers.find(u=>u.id===saved)?.aliases[0]||''));return;}"),
-  'Local authentication restores the saved user before showing the credential form.');
-assert.ok(html.includes('if(!persistLocalSessionUser(teamUserId)){'),
-  'The demo refuses to enter the application unless persistent localStorage accepts and verifies the session.');
-assert.ok(html.indexOf('if(!persistLocalSessionUser(teamUserId)){') < html.indexOf('finishVisualAuth(makeLocalContext(teamUserId,username))'),
-  'A successful local sign-in is persisted and verified before the application UI is started.');
-assert.ok(localAuthSource.includes('storedAsBackup=localStorage.getItem(LOCAL_SESSION_KEY)===userId'),
-  'The persistent localStorage identity is read back and verified before sign-in succeeds.');
-assert.ok(localAuthSource.includes('sessionStorage.setItem(LOCAL_SESSION_KEY,userId)') &&
-          localAuthSource.includes('sessionStorage.getItem(LOCAL_SESSION_KEY)!==userId'),
-  'The tab-specific identity is written and checked independently, without making it the durable session requirement.');
+  'Local authentication restores the saved browser identity before showing the credential form.');
+assert.ok(html.includes("window.addEventListener('storage',handleLocalSessionStorageEvent)"),
+  'Already-open tabs listen for browser-wide identity changes.');
+assert.ok(html.includes('finishVisualAuth(makeLocalContext(id,username))'),
+  'A browser-wide session change updates an already-running application instance.');
 assert.ok(html.includes("if(cfg.localAuth?.enabled===true&&!hasCognitoConfigurationAttempt()){initializeLocalAuth();return;}"),
   'The public demo selects local-session restoration before entering the Cognito flow.');
 
-const sharedLocalStorage = createMemoryStorage();
-const firstTabStorage = createMemoryStorage();
-const firstTabContext = {
+const browserStorage = createMemoryStorage();
+const browserContextA = {
   validIds: ['u1','u2','u3','u4','u5','u6','root'],
   LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v2',
   LEGACY_LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
-  sessionStorage: firstTabStorage,
-  localStorage: sharedLocalStorage,
+  localStorage: browserStorage,
   console
 };
 vm.runInNewContext(localAuthSource +
   '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;',
-  firstTabContext);
+  browserContextA);
+assert.equal(browserContextA.persist('u2'), true);
+assert.equal(browserStorage.getItem('team-follow-up-local-auth-v2'), 'u2');
+assert.equal(browserContextA.restore(), 'u2');
 
-// Sign-in writes the exact user to both stores.
-assert.equal(firstTabContext.persist('u2'), true);
-assert.equal(firstTabStorage.getItem('team-follow-up-local-auth-v2'), 'u2');
-assert.equal(sharedLocalStorage.getItem('team-follow-up-local-auth-v2'), 'u2');
+const browserContextB = { ...browserContextA, localStorage: browserStorage };
+vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', browserContextB);
+assert.equal(browserContextB.restore(), 'u2',
+  'A separate tab in the same browser profile restores exactly the same browser-wide user.');
 
-// A hard refresh reconstructs JavaScript state but the browser retains its tab storage.
-const refreshedTabStorage = createMemoryStorage();
-for (const [key, value] of firstTabStorage.map) refreshedTabStorage.setItem(key, value);
-const refreshedTabContext = {
-  ...firstTabContext,
-  sessionStorage: refreshedTabStorage
-};
-vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;this.clear=clearLocalSessionUser;', refreshedTabContext);
-assert.equal(refreshedTabContext.restore(), 'u2',
-  'A hard refresh restores the same user from the tab-scoped session without asking for credentials.');
-
-// A second tab can sign in as another user without replacing the first tab's
-// authoritative sessionStorage identity.
-const secondTabStorage = createMemoryStorage();
-const secondTabContext = {
-  ...firstTabContext,
-  sessionStorage: secondTabStorage
-};
+// Signing in as a different demo user in any tab changes the one shared identity.
 vm.runInNewContext(localAuthSource +
   '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;',
-  secondTabContext);
-secondTabContext.persist('u3');
-assert.equal(secondTabContext.restore(), 'u3');
-assert.equal(refreshedTabContext.restore(), 'u2',
-  'A valid user in another tab does not override this tab’s session.');
-assert.equal(sharedLocalStorage.getItem('team-follow-up-local-auth-v2'), 'u3',
-  'Restoring an existing tab does not overwrite the origin recovery copy from another tab sign-in.');
+  browserContextB);
+assert.equal(browserContextB.persist('u3'), true);
+assert.equal(browserContextA.restore(), 'u3',
+  'A sign-in from another tab changes the shared browser-profile identity for every tab.');
 
-// When tab storage is unavailable, the simple localStorage copy restores the
-// most recently signed-in demo identity and repopulates the tab store.
-const recoveredTabStorage = createMemoryStorage();
-const recoveredTabContext = {
-  ...firstTabContext,
-  sessionStorage: recoveredTabStorage
-};
-vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', recoveredTabContext);
-assert.equal(recoveredTabContext.restore(), 'u3',
-  'The localStorage recovery copy works when sessionStorage is absent.');
-assert.equal(recoveredTabStorage.getItem('team-follow-up-local-auth-v2'), 'u3',
-  'Recovery repopulates sessionStorage for subsequent refreshes.');
-
-// Explicit sign-out removes this tab's session and the shared recovery copy.
-// Other already-open tabs retain their own sessionStorage identity.
-refreshedTabContext.clear();
-assert.equal(refreshedTabStorage.getItem('team-follow-up-local-auth-v2'), null);
-assert.equal(sharedLocalStorage.getItem('team-follow-up-local-auth-v2'), null);
-assert.equal(secondTabStorage.getItem('team-follow-up-local-auth-v2'), 'u3',
-  'Signing out in one tab does not erase another tab’s already-established session.');
-
-// Legacy sessionStorage entries migrate forward once, without reviving the old
-// URL/history/window.name recovery implementation.
-const legacyTabStorage = createMemoryStorage();
-legacyTabStorage.setItem('team-follow-up-local-auth-v1', 'u4');
-const legacyContext = {
-  ...firstTabContext,
-  sessionStorage: legacyTabStorage,
+// A separate browser profile has its own website storage and identity.
+const isolatedBrowserContext = {
+  ...browserContextA,
   localStorage: createMemoryStorage()
 };
 vm.runInNewContext(localAuthSource +
-  '\nthis.restore=restoreLocalSessionUser;',
-  legacyContext);
-assert.equal(legacyContext.restore(), 'u4');
-assert.equal(legacyTabStorage.getItem('team-follow-up-local-auth-v2'), 'u4');
-assert.equal(legacyTabStorage.getItem('team-follow-up-local-auth-v1'), null);
-console.log('Session-refresh tests passed: persistent Cognito storage, transient auth recovery, user-specific page/tab/filter/scroll restoration, and no hydration route reset.');
+  '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;',
+  isolatedBrowserContext);
+assert.equal(isolatedBrowserContext.restore(), '');
+assert.equal(isolatedBrowserContext.persist('u4'), true);
+assert.equal(browserContextA.restore(), 'u3',
+  'Another browser profile is isolated because it has a different localStorage area.');
+
+// Explicit sign-out clears the shared browser identity for all tabs.
+browserContextA.clear();
+assert.equal(browserStorage.getItem('team-follow-up-local-auth-v2'), null);
+assert.equal(browserContextB.restore(), '',
+  'A tab in the same browser profile sees the signed-out state on its next read.');
+
+// Migrate the old browser-local v1 key forward without consulting sessionStorage.
+const legacyBrowserStorage = createMemoryStorage([['team-follow-up-local-auth-v1', 'u5']]);
+const legacyBrowserContext = { ...browserContextA, localStorage: legacyBrowserStorage };
+vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', legacyBrowserContext);
+assert.equal(legacyBrowserContext.restore(), 'u5');
+assert.equal(legacyBrowserStorage.getItem('team-follow-up-local-auth-v2'), 'u5');
+assert.equal(legacyBrowserStorage.getItem('team-follow-up-local-auth-v1'), null);
+console.log('Session-refresh tests passed: persistent browser-profile identity, shared same-origin tabs, separate profile isolation, legacy migration, explicit sign-out, and no tab-scoped authentication.');
