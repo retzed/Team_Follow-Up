@@ -171,8 +171,6 @@ assert.ok(html.includes("if(cfg.localAuth?.enabled===true&&!hasCognitoConfigurat
 const browserStorage = createMemoryStorage();
 const browserContextA = {
   validIds: ['u1','u2','u3','u4','u5','u6','root'],
-  LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v2',
-  LEGACY_LOCAL_SESSION_KEY: 'team-follow-up-local-auth-v1',
   localStorage: browserStorage,
   console
 };
