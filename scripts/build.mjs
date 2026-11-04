@@ -14,7 +14,7 @@ const closeTag = '</script>';
 const start = source.indexOf(openTag);
 const end = start < 0 ? -1 : source.indexOf(closeTag, start + openTag.length);
 if (start < 0 || end < 0) {
-  throw new Error('index.html is missing the Team Follow-Up runtime configuration block.');
+  throw new Error('index.html is missing the Follow-Up runtime configuration block.');
 }
 
 const serialized = JSON.stringify(runtimeConfig, null, 2);
@@ -30,4 +30,4 @@ await mkdir(outputDirectory, { recursive: true });
 await writeFile(outputDirectory + '/index.html', output, 'utf8');
 await writeFile(outputDirectory + '/.nojekyll', '', 'utf8');
 
-console.log('Built the local Team Follow-Up demo to dist/ (browser-local data, demo sign-in enabled).');
+console.log('Built the local Follow-Up demo to dist/ (browser-local data, demo sign-in enabled).');
