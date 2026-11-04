@@ -68,7 +68,8 @@ assert.equal(config.localAuth.enabled, true, 'public demo enables local demo sig
 assert.equal(config.apiBaseUrl, '', 'public demo must not point to a remote API');
 assert.equal(config.cognito.userPoolId, '', 'public demo must not contain a user-pool identifier');
 assert.equal(config.cognito.userPoolClientId, '', 'public demo must not contain an app-client identifier');
-assert.ok(html.includes('team-follow-up-local-auth-v1'), 'built demo includes the local demo session flow');
+assert.ok(html.includes('team-follow-up-local-auth-v2'), 'built demo includes the current browser-wide local demo session flow');
+assert.ok(!html.includes('team-follow-up-local-auth-v1'), 'built demo excludes the retired local demo session implementation');
 assert.equal(await readFile('dist/.nojekyll', 'utf8'), '', 'static artifact contains .nojekyll');
 const embeddedSvgImages = html.split('data:image/svg+xml;base64,').slice(1)
   .map(encoded => Buffer.from(encoded.slice(0, encoded.indexOf('"')), 'base64').toString('utf8'));
