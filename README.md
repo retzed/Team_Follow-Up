@@ -1,4 +1,4 @@
-# Team Follow-Up Application
+# Follow-Up
 
 A bilingual (English/Arabic) team workspace for organizing projects, jobs, tasks, follow-ups, assignments, priorities, and activity history.
 
@@ -57,7 +57,7 @@ flowchart TD
     UI --> Views[Projects, jobs, tasks and follow-ups]
     UI --> Search[Search and assignment filters]
     UI --> History[Activity history and archive]
-    Views --> DataAPI[Team Follow-Up data access layer]
+    Views --> DataAPI[Follow-Up data access layer]
     Search --> DataAPI
     History --> DataAPI
     DataAPI --> Store[Browser-local data store]
