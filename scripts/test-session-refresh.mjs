@@ -189,9 +189,6 @@ assert.equal(browserContextB.restore(), 'u2',
   'A separate tab in the same browser profile restores exactly the same browser-wide user.');
 
 // Signing in as a different demo user in any tab changes the one shared identity.
-vm.runInNewContext(localAuthSource +
-  '\nthis.persist=persistLocalSessionUser;this.restore=restoreLocalSessionUser;',
-  browserContextB);
 assert.equal(browserContextB.persist('u3'), true);
 assert.equal(browserContextA.restore(), 'u3',
   'A sign-in from another tab changes the shared browser-profile identity for every tab.');
