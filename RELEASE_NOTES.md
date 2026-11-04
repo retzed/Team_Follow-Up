@@ -1,15 +1,14 @@
 # Application Release Notes
 
-## 3 November 2026 — Browser refresh session continuity
+## 4 November 2026 — Durable demo sign-in across page reloads
 
-- Kept demo sign-in identities tab-scoped so separate demo users in different tabs remain independent.
-- Added a per-tab persistent identity backup keyed by a tab marker retained across page reloads; a reload can restore the same demo user even when the tab-scoped storage entry needs to be repopulated.
-- Explicit sign-out removes only the current tab's identity backup and does not sign out another demo tab.
-- Added regression coverage that simulates a page reload, a second tab signing in as another user, and sign-out isolation.
+- Made the origin's `localStorage` record the required durable source for the browser-local demo identity. A sign-in is accepted only after the record is written and read back successfully.
+- Kept `sessionStorage` as a per-tab identity copy so already-open tabs can continue using different demo users without their active identity being overwritten by another tab's sign-in.
+- A reload restores the current tab identity when present; when tab storage is missing, startup recovers the last persistent demo identity from `localStorage`.
+- If persistent storage is unavailable, the sign-in gate stays closed instead of accepting a tab-only session that may disappear on reload.
+- Added regression coverage for hard reload, tab-storage loss, tab isolation, explicit sign-out, and failure when only tab storage can be written.
 
-- Strengthened demo identity persistence by storing the signed-in user ID in the current History API entry and the tab's `window.name`, in addition to `sessionStorage` and the per-tab `localStorage` backup. Startup restores from these independent sources and repopulates browser storage.
-- Explicit sign-out removes the identity from the current tab's storage, history entry and tab name without affecting another tab.
-- Extended regression tests to cover reload restoration when browser storage is empty, history state is unavailable, and a second tab signs in as another user.
+This remains demonstration sign-in, not secure authentication. The public GitHub Pages build has no server-managed session or production account security.
 
 ## 3 November 2026 — Real-time Activity history
 
