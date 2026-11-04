@@ -80,7 +80,7 @@ function makeGateEnvironment({ session, local, config = null } = {}) {
     appendChild(node) { injectedScripts.push(node); return node; }
   };
   const document = {
-    title: 'Team Follow-Up',
+    title: 'Follow-Up',
     readyState: 'loading',
     documentElement: root,
     body,
