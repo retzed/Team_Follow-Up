@@ -2111,7 +2111,6 @@ function readTables(includeActivity=false){
  const validIds=['u1','u2','u3','u4','u5','u6','root'];
  const state={modules:null,authMode:null,mode:'signIn',pendingUser:'',nextStep:null,appStarted:false,submitting:false};
  const LOCAL_SESSION_KEY='team-follow-up-local-auth-v2';
- const LEGACY_LOCAL_SESSION_KEY='team-follow-up-local-auth-v1';
  function persistLocalSessionUser(teamUserId){
   const userId=String(teamUserId||'');
   if(!validIds.includes(userId))return false;
@@ -2128,20 +2127,14 @@ function readTables(includeActivity=false){
  function restoreLocalSessionUser(){
   try{
    const saved=localStorage.getItem(LOCAL_SESSION_KEY)||'';
-   if(validIds.includes(saved))return saved;
-   const legacy=localStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
-   if(!validIds.includes(legacy))return '';
-   localStorage.setItem(LOCAL_SESSION_KEY,legacy);
-   if(localStorage.getItem(LOCAL_SESSION_KEY)!==legacy)return '';
-   localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);
-   return legacy;
+   return validIds.includes(saved)?saved:'';
   }catch(error){
    console.warn('The demo identity could not be restored from browser localStorage.',error);
    return '';
   }
  }
  function clearLocalSessionUser(){
-  try{localStorage.removeItem(LOCAL_SESSION_KEY);localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}
+  try{localStorage.removeItem(LOCAL_SESSION_KEY);}
   catch(error){console.warn('The browser-wide demo sign-in could not be cleared.',error);}
  }
  screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;
@@ -2461,7 +2454,7 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
   }
   /* A configured Cognito pool always takes precedence. The local fallback is never attempted
      when Cognito is configured, even if Cognito authentication or the SDK fails. */
-  state.authMode='cognito';for(const storage of [sessionStorage,localStorage]){try{storage.removeItem(LOCAL_SESSION_KEY);storage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(e){}}
+  state.authMode='cognito';try{localStorage.removeItem(LOCAL_SESSION_KEY);}catch(e){}
   setError(copy.loading);
   try{
    const version='6.20.0';
