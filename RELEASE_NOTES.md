@@ -1,15 +1,14 @@
 # Application Release Notes
 
-## 4 November 2026 — Durable demo sign-in across page reloads
+## 4 November 2026 — Browser-wide demo sign-in
 
-- Made the origin's `localStorage` record the required durable source for the browser-local demo identity. A sign-in is accepted only after the record is written and read back successfully.
-- Kept `sessionStorage` as a per-tab identity copy so already-open tabs can continue using different demo users without their active identity being overwritten by another tab's sign-in.
-- A reload restores the current tab identity when present; when tab storage is missing, startup recovers the last persistent demo identity from `localStorage`.
-- If persistent storage is unavailable, the sign-in gate stays closed instead of accepting a tab-only session that may disappear on reload.
-- Added regression coverage for hard reload, tab-storage loss, tab isolation, explicit sign-out, and failure when only tab storage can be written.
+- Removed tab-scoped authentication storage. The public demo stores exactly one active demo identity in `localStorage` for the browser profile and site origin.
+- The identity survives page refreshes, tab closure, and browser restarts until website data for the site is cleared.
+- All tabs in the same browser profile share the same signed-in demo user. Signing in or out in one tab updates other open tabs through the browser `storage` event.
+- Separate browser profiles and private sessions remain isolated.
+- Added regression coverage for hard reloads without `sessionStorage`, same-profile multi-tab changes, cross-tab sign-out, and separate profile isolation.
 
 This remains demonstration sign-in, not secure authentication. The public GitHub Pages build has no server-managed session or production account security.
-
 ## 3 November 2026 — Real-time Activity history
 
 - Extended the demo's cross-tab item-change handler to fetch Activity rows only for the changed item IDs, then merge those rows into the workspace Activity index and application-wide history cache.

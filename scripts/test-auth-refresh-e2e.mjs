@@ -44,6 +44,7 @@ function makeClassList() {
 function makeGateEnvironment({ session, local, config = null } = {}) {
   const sessionStorage = session || memoryStorage();
   const localStorage = local || memoryStorage();
+  const windowListeners = Object.create(null);
   const elements = new Map();
   const injectedScripts = [];
   const element = id => {
@@ -86,6 +87,9 @@ function makeGateEnvironment({ session, local, config = null } = {}) {
     createElement(tagName) { return element('created-' + tagName + '-' + injectedScripts.length); }
   };
   const window = {
+    localStorage,
+    addEventListener(name, callback) { (windowListeners[name] ||= []).push(callback); },
+    dispatchStorage(event) { for (const callback of windowListeners.storage || []) callback(event); },
     TEAM_FOLLOW_UP_CONFIG: config || {
       cognito: { userPoolId: '', userPoolClientId: '', teamUserAttribute: '', identityMap: {} },
       localAuth: { enabled: true },
@@ -107,11 +111,14 @@ function makeGateEnvironment({ session, local, config = null } = {}) {
   return { window, document, elements, injectedScripts, sessionStorage, localStorage };
 }
 
-const session = memoryStorage();
+const blockedTabStorage = new Proxy({}, {
+  get() { throw new Error('Demo authentication must not access sessionStorage.'); }
+});
 const local = memoryStorage();
 
 // First-load path: the gate shows sign-in because there is no saved identity.
-const firstLoad = makeGateEnvironment({ session, local });
+// Tab-scoped storage deliberately throws on every access.
+const firstLoad = makeGateEnvironment({ session: blockedTabStorage, local });
 assert.equal(firstLoad.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
 assert.equal(firstLoad.elements.get('signInScreen').hidden, false);
 assert.equal(firstLoad.injectedScripts.length, 0);
@@ -123,123 +130,79 @@ firstLoad.elements.get('signInPassword').value = 'demo-password';
 await firstLoad.elements.get('signInForm').dispatch('submit', { preventDefault() {} });
 assert.equal(firstLoad.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u2');
 assert.equal(firstLoad.elements.get('signInScreen').hidden, true);
-assert.equal(firstLoad.sessionStorage.getItem(SESSION_KEY), 'u2');
-assert.equal(firstLoad.localStorage.getItem(SESSION_KEY), 'u2');
+assert.equal(firstLoad.localStorage.getItem(SESSION_KEY), 'u2',
+  'The single auth identity is stored in browser-profile localStorage.');
 assert.equal(firstLoad.injectedScripts.length, 1);
 assert.equal(firstLoad.injectedScripts[0].id, 'running-team-follow-up-app');
 assert.equal(firstLoad.injectedScripts[0].textContent, '/* real app bootstrap hand-off */');
 
-// Hard reload path: create a brand-new JS realm and DOM while retaining only
-// the browser storage objects, exactly as a same-tab page refresh does.
-const refreshed = makeGateEnvironment({ session, local });
+// Hard reload reconstructs JavaScript and the DOM while retaining only
+// the browser profile's localStorage. sessionStorage throws if it is touched.
+const refreshed = makeGateEnvironment({ session: blockedTabStorage, local });
 assert.equal(refreshed.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u2');
 assert.equal(refreshed.elements.get('signInScreen').hidden, true);
 assert.equal(refreshed.injectedScripts.length, 1);
-assert.equal(refreshed.injectedScripts[0].id, 'running-team-follow-up-app');
 
-// A reload that loses the tab-scoped store must still restore from the durable
-// origin store (the behavior needed when a browser does not retain tab storage).
-const recoveredWithoutTabStorage = makeGateEnvironment({
-  session: memoryStorage(),
-  local
-});
-assert.equal(recoveredWithoutTabStorage.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u2');
-assert.equal(recoveredWithoutTabStorage.elements.get('signInScreen').hidden, true);
-assert.equal(recoveredWithoutTabStorage.injectedScripts.length, 1);
+// A second tab in the same browser profile restores the same single identity.
+const secondTab = makeGateEnvironment({ session: blockedTabStorage, local });
+assert.equal(secondTab.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u2');
+assert.equal(secondTab.elements.get('signInScreen').hidden, true);
 
-// A stale tab identity cannot start the app if the durable origin store is
-// unavailable. This is distinct from a fresh sign-in and prevents an apparent
-// successful refresh that cannot be persisted for the next load.
-const seededTabOnlyStorage = memoryStorage([[SESSION_KEY, 'u2']]);
-const unavailablePersistentStorage = {
-  getItem() { throw new Error('persistent storage unavailable'); },
-  setItem() { throw new Error('persistent storage unavailable'); },
-  removeItem() {},
-  key() { return null; },
-  get length() { return 0; }
-};
+// sessionStorage cannot create a separate authenticated identity.
+const seededTabOnlyStorage = memoryStorage([[SESSION_KEY, 'u4']]);
 const tabOnlyRestore = makeGateEnvironment({
   session: seededTabOnlyStorage,
-  local: unavailablePersistentStorage
+  local: memoryStorage()
 });
 assert.equal(tabOnlyRestore.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
 assert.equal(tabOnlyRestore.elements.get('signInScreen').hidden, false);
-assert.equal(tabOnlyRestore.injectedScripts.length, 0,
-  'A tab-only identity is not accepted when durable storage is unavailable.');
+assert.equal(tabOnlyRestore.injectedScripts.length, 0);
 
-// Explicit sign-out clears both the tab session and its recovery copy.
-await refreshed.window.TeamFollowUpAuth.signOut();
-assert.equal(refreshed.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
-assert.equal(refreshed.sessionStorage.getItem(SESSION_KEY), null);
-assert.equal(refreshed.localStorage.getItem(SESSION_KEY), null);
-assert.equal(refreshed.elements.get('signInScreen').hidden, false);
-
-// After sign-out, a fresh page load must not silently restore the old identity.
-const afterSignOut = makeGateEnvironment({ session, local });
-assert.equal(afterSignOut.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
-assert.equal(afterSignOut.elements.get('signInScreen').hidden, false);
-assert.equal(afterSignOut.injectedScripts.length, 0);
-
-// Storage failure path: valid password verification still must not enter the app
-// when neither storage can accept the session record.
-const failingSessionStorage = {
-  getItem() { return null; },
-  setItem() { throw new Error('session storage blocked'); },
-  removeItem() {},
-  get length() { return 0; }
-};
-const failingLocalStorage = {
-  getItem(key) { return key === SESSION_KEY ? null : local.getItem(key); },
-  setItem(key, value) {
-    if (key === SESSION_KEY) throw new Error('local storage blocked for session');
-    local.setItem(key, value);
-  },
-  removeItem(key) { local.removeItem(key); },
-  get length() { return local.length; },
-  key(index) { return local.key(index); }
-};
-const storageFailure = makeGateEnvironment({
-  session: failingSessionStorage,
-  local: failingLocalStorage
+// A sign-out in one tab removes the browser-wide identity and updates the other.
+await secondTab.window.TeamFollowUpAuth.signOut();
+assert.equal(secondTab.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
+assert.equal(local.getItem(SESSION_KEY), null);
+firstLoad.window.dispatchStorage({
+  key: SESSION_KEY, oldValue: 'u2', newValue: null, storageArea: local
 });
-storageFailure.elements.get('signInUsername').value = 'Zyad';
-storageFailure.elements.get('signInPassword').value = 'demo-password';
-await storageFailure.elements.get('signInForm').dispatch('submit', { preventDefault() {} });
-assert.equal(storageFailure.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
-assert.equal(storageFailure.elements.get('signInScreen').hidden, false);
-assert.equal(storageFailure.injectedScripts.length, 0);
-assert.match(storageFailure.elements.get('signInError').textContent, /could not save the sign-in session/i);
+assert.equal(firstLoad.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
+assert.equal(firstLoad.elements.get('signInScreen').hidden, false);
 
-// sessionStorage alone is insufficient. The password record can be saved, but
-// if the persistent session key cannot be written, the gate must not create a
-// tab-only identity or start the application.
-const tabOnlyStorage = memoryStorage();
-const localStorageWithoutSessionWrites = {
-  getItem(key) { return local.getItem(key); },
-  setItem(key, value) {
-    if (key === SESSION_KEY) throw new Error('persistent session writes blocked');
-    local.setItem(key, value);
-  },
-  removeItem(key) { local.removeItem(key); },
-  get length() { return local.length; },
-  key(index) { return local.key(index); }
+// Signing in as a different team member in the second tab updates the first tab.
+secondTab.elements.get('signInUsername').value = 'Nadine';
+secondTab.elements.get('signInPassword').value = 'demo-password';
+await secondTab.elements.get('signInForm').dispatch('submit', { preventDefault() {} });
+assert.equal(secondTab.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u3');
+assert.equal(local.getItem(SESSION_KEY), 'u3');
+firstLoad.window.__TEAM_FOLLOW_UP_APP_AUTH_CHANGED = context => {
+  firstLoad.lastBrowserIdentity = context.teamUserId;
 };
-const tabOnlySignIn = makeGateEnvironment({
-  session: tabOnlyStorage,
-  local: localStorageWithoutSessionWrites
+firstLoad.window.dispatchStorage({
+  key: SESSION_KEY, oldValue: null, newValue: 'u3', storageArea: local
 });
-tabOnlySignIn.elements.get('signInUsername').value = 'Nadine';
-tabOnlySignIn.elements.get('signInPassword').value = 'demo-password';
-await tabOnlySignIn.elements.get('signInForm').dispatch('submit', { preventDefault() {} });
-assert.equal(tabOnlySignIn.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
-assert.equal(tabOnlySignIn.elements.get('signInScreen').hidden, false);
-assert.equal(tabOnlySignIn.injectedScripts.length, 0);
-assert.equal(tabOnlyStorage.getItem(SESSION_KEY), null,
-  'The gate does not leave behind a sessionStorage-only identity.');
-assert.match(tabOnlySignIn.elements.get('signInError').textContent, /could not save the sign-in session/i);
+assert.equal(firstLoad.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u3');
+assert.equal(firstLoad.lastBrowserIdentity, 'u3');
+assert.equal(firstLoad.elements.get('signInScreen').hidden, true);
+
+// A separate browser profile has independent localStorage and therefore no session.
+const separateBrowserProfile = makeGateEnvironment({
+  session: blockedTabStorage,
+  local: memoryStorage()
+});
+assert.equal(separateBrowserProfile.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
+assert.equal(separateBrowserProfile.elements.get('signInScreen').hidden, false);
+
+// Explicit sign-out in one of the tabs clears the single shared browser session.
+await secondTab.window.TeamFollowUpAuth.signOut();
+assert.equal(local.getItem(SESSION_KEY), null);
+firstLoad.window.dispatchStorage({
+  key: SESSION_KEY, oldValue: 'u3', newValue: null, storageArea: local
+});
+assert.equal(firstLoad.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
+assert.equal(firstLoad.elements.get('signInScreen').hidden, false);
 
 // Verify the app bootstrap uses the context produced by the gate rather than
 // independently inventing or resetting an identity during startup.
 assert.ok(html.includes('const sessionUserIdAtLoad=window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId||\'\';'));
 assert.ok(html.includes('setSignInState(Boolean(sessionUserIdAtLoad));'));
-console.log('Auth refresh E2E passed: sign-in, persistent storage verification, hard reload and tab-storage-loss restore, app bootstrap hand-off, explicit sign-out, and transient-storage refusal.');
+console.log('Auth refresh E2E passed: browser-wide sign-in, hard reload, same-profile multi-tab identity changes, cross-tab sign-out, separate profile isolation, app bootstrap hand-off, and absence of tab-scoped auth storage.');

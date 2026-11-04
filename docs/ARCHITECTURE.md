@@ -17,8 +17,7 @@ flowchart TD
     Context --> UI[Team Follow-Up UI]
     UI --> Adapter[TeamFollowUpDataApi]
     Adapter --> LocalStore[(Browser localStorage)]
-    Browser --> Session[(sessionStorage: active tab identity)]
-    Browser --> Recovery[(localStorage: last-session recovery copy)]
+    Browser --> BrowserSession[(localStorage: shared browser-profile identity)]
     LocalStore --> Items[Work items and hierarchy]
     LocalStore --> Activity[Activity events]
     LocalStore --> Profiles[Built-in team profiles]
@@ -34,7 +33,7 @@ The runtime is organized as a small set of script-level components inside `index
 | Preference bootstrap | Detects supported browser language and color-scheme preferences before the page paints. Unsupported or indeterminate preferences fall back to English and dark mode. |
 | Runtime configuration | Defines the public demo configuration. The build script replaces this block to force the built-in data mode and local demonstration sign-in. |
 | Data-access adapter | Exposes asynchronous methods for bootstrap, users, top-level items, children, assignments, activity, archive, restore, and commits. |
-| Sign-in gate | Uses `localStorage` as the required durable demo-session record and `sessionStorage` as an optional per-tab identity copy. It verifies the persistent write before entering the application; a tab-only session is rejected. Sign-in is illustrative, not a security boundary. |
+| Sign-in gate | Reads and writes one browser-profile identity in `localStorage`. Every tab on the same site origin uses that identity, and the browser `storage` event propagates sign-in and sign-out changes to open tabs. Sign-in is illustrative, not a security boundary. |
 | Application controller | Owns current UI state, filtering, selection, rendering, dialogs, translations, activity refresh, and delegated event handlers. |
 | Layout compatibility layer | Applies the sidebar-height and responsive fixes needed by the delivered static page. |
 | Build and test scripts | Produce the GitHub Pages artifact and validate JavaScript syntax, data operations, activity behavior, UI behavior, and build settings. |
@@ -80,7 +79,7 @@ The four logical collections are:
 
 1. The earliest script sets document language, direction, and theme defaults to avoid an incorrect initial layout.
 2. The demo runtime configuration selects the built-in adapter and local demo sign-in.
-3. The sign-in gate checks the active tab's `sessionStorage` first to preserve that tab's identity, but it requires a valid persistent `localStorage` record before accepting the session. If the tab entry is missing, the same-origin persistent record restores the identity. A new sign-in is not accepted unless the persistent record can be written and read back; a successful `sessionStorage`-only write is deliberately insufficient. This does not authenticate a real account.
+3. The sign-in gate reads the browser-profile identity directly from `localStorage`. A new sign-in is accepted only after the identity is written and read back successfully. The same record is used by every tab in that browser profile; no tab-scoped identity is stored or consulted. The browser `storage` event applies a sign-in or sign-out made in another tab to the current running instance. This does not authenticate a real account.
 4. The adapter loads and normalizes the saved tables, migrates older local schema shapes when needed, and returns a UI snapshot.
 5. The application controller initializes its indexes, selected workspace item, translations, and event handlers, then renders the UI.
 
@@ -107,9 +106,9 @@ Regression tests cover the event-propagation boundary, cyclic and deep hierarchy
 ## Persistence and isolation
 
 - Workspaces persist in `localStorage` for the site's origin and browser profile.
-- `localStorage` is the required durable record for the demo identity. `sessionStorage` is an optional tab-scoped copy that keeps already-open tabs isolated when different demo users sign in concurrently.
-- On refresh, a valid tab identity takes precedence so another tab signing in as a different demo user does not replace the current tab's identity. When the tab entry is absent, the persistent `localStorage` record restores the most recently signed-in demo identity.
-- A fresh sign-in is accepted only after the `localStorage` record has been written and read back successfully. A tab-only write is never treated as a durable session. A restore from a valid tab entry does not rewrite the shared recovery record; explicit sign-out clears the current tab identity and the shared persistent identity.
+- `localStorage` is the only source of the demo identity. The single browser-profile record is shared by every tab on this site origin and persists through page refreshes, tab closure, and browser restarts.
+- Signing in or out in one tab updates the shared record. Other open tabs receive the browser `storage` event and switch to the new identity or return to sign-in. There is no tab-specific authentication state.
+- Separate browser profiles and private-browsing contexts have separate website storage and therefore separate demo sessions. Clearing this site's website data removes the identity; clearing only navigation history may not remove site storage, depending on the browser's selected clearing options.
 - Because the demo dataset itself is stored in `localStorage`, browsers that block persistent site storage cannot run this browser-local demo reliably; the sign-in gate stays closed and reports the storage problem rather than allowing a session that will be lost on refresh.
 - Demo usernames share the same workspace when used in the same browser profile because they are views of one local demonstration dataset.
 - Other browsers, devices, profiles, and private windows have independent data.
