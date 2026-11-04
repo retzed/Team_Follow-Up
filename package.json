@@ -2,7 +2,7 @@
   "name": "team-follow-up-application",
   "version": "1.0.0",
   "private": true,
-  "description": "Bilingual Team Follow-Up browser application and local demo.",
+  "description": "Bilingual Follow-Up browser application and local demo.",
   "scripts": {
     "build": "node scripts/build.mjs",
     "test:syntax": "node scripts/check-syntax.mjs",
