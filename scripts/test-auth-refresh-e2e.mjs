@@ -11,9 +11,10 @@ const gateEnd = html.indexOf('</script>', gateStart);
 assert.ok(gateEnd > gateStart, 'The pre-authentication gate must be a complete script.');
 const gateSource = html.slice(gateStart, gateEnd);
 
+assert.ok(!html.includes('team-follow-up-local-auth-v1'),
+  'The retired local demo session key and migration path are not shipped.');
+
 const SESSION_KEY = 'team-follow-up-local-auth-v2';
-const LEGACY_SESSION_KEY = 'team-follow-up-local-auth-v1';
-const PASSWORD_KEY = 'team-follow-up-local-password-hashes-v1';
 
 function memoryStorage(initial = []) {
   const values = new Map(initial);
