@@ -2115,79 +2115,35 @@ function readTables(includeActivity=false){
  function persistLocalSessionUser(teamUserId){
   const userId=String(teamUserId||'');
   if(!validIds.includes(userId))return false;
-  // localStorage is the durable session record and is also required by the
-  // browser-local demo data adapter. Never accept a tab-only sign-in: it can
-  // disappear on reload in restricted/private browser contexts.
-  let storedAsBackup=false;
+  // One browser-profile identity is shared by every tab for this site origin.
+  // localStorage survives reloads and browser restarts; no tab-scoped storage,
+  // window.name, URL fragment, or History API state participates in auth.
   try{
    localStorage.setItem(LOCAL_SESSION_KEY,userId);
-   storedAsBackup=localStorage.getItem(LOCAL_SESSION_KEY)===userId;
-  }catch(error){console.warn('The demo identity could not be stored persistently in browser localStorage.',error);}
-  if(!storedAsBackup)return false;
-  // sessionStorage keeps already-open tabs isolated when different demo users
-  // sign in concurrently. It is an optimization, not the persistence source.
-  try{
-   sessionStorage.setItem(LOCAL_SESSION_KEY,userId);
-   if(sessionStorage.getItem(LOCAL_SESSION_KEY)!==userId)console.warn('The tab-specific demo identity could not be verified; the persistent browser session remains available.');
-  }catch(error){console.warn('The tab-specific demo identity could not be stored; the persistent browser session remains available.',error);}
-  return true;
+   return localStorage.getItem(LOCAL_SESSION_KEY)===userId;
+  }catch(error){
+   console.warn('The demo identity could not be stored persistently in browser localStorage.',error);
+   return false;
+  }
  }
  function restoreLocalSessionUser(){
-  let saved='',legacySession=false,legacyBackup=false;
-  // A valid tab session is authoritative and must never be overwritten by the
-  // origin-wide recovery copy or rewrite that shared copy during a normal refresh.
   try{
-   saved=sessionStorage.getItem(LOCAL_SESSION_KEY)||'';
-   if(!validIds.includes(saved)){
-    saved=sessionStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
-    legacySession=validIds.includes(saved);
-   }
-  }catch(error){saved='';}
-  if(validIds.includes(saved)){
-   // A tab entry preserves per-tab identity, but it is accepted only when a
-   // durable origin-level record is available. Migrate older tab-only sessions
-   // once when localStorage permits it; otherwise fail closed instead of
-   // restoring a session that may disappear on the next refresh.
-   let durableUser='';
-   try{
-    durableUser=localStorage.getItem(LOCAL_SESSION_KEY)||'';
-    if(!validIds.includes(durableUser))durableUser=localStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
-    if(!validIds.includes(durableUser)){
-     localStorage.setItem(LOCAL_SESSION_KEY,saved);
-     durableUser=localStorage.getItem(LOCAL_SESSION_KEY)||'';
-    }
-   }catch(error){durableUser='';}
-   if(!validIds.includes(durableUser))return '';
-   if(legacySession){
-    try{sessionStorage.setItem(LOCAL_SESSION_KEY,saved);sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
-    try{if(localStorage.getItem(LOCAL_SESSION_KEY)!==saved)localStorage.setItem(LOCAL_SESSION_KEY,saved);localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
-   }else{
-    try{sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
-   }
-   return saved;
+   const saved=localStorage.getItem(LOCAL_SESSION_KEY)||'';
+   if(validIds.includes(saved))return saved;
+   const legacy=localStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
+   if(!validIds.includes(legacy))return '';
+   localStorage.setItem(LOCAL_SESSION_KEY,legacy);
+   if(localStorage.getItem(LOCAL_SESSION_KEY)!==legacy)return '';
+   localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);
+   return legacy;
+  }catch(error){
+   console.warn('The demo identity could not be restored from browser localStorage.',error);
+   return '';
   }
-  // If this tab has no usable session, recover the most recently signed-in demo
-  // identity saved for the origin and recreate this tab's session copy.
-  try{
-   saved=localStorage.getItem(LOCAL_SESSION_KEY)||'';
-   if(!validIds.includes(saved)){
-    saved=localStorage.getItem(LEGACY_LOCAL_SESSION_KEY)||'';
-    legacyBackup=validIds.includes(saved);
-   }
-  }catch(error){saved='';}
-  if(validIds.includes(saved)){
-   try{sessionStorage.setItem(LOCAL_SESSION_KEY,saved);}catch(error){}
-   if(legacyBackup){
-    try{localStorage.setItem(LOCAL_SESSION_KEY,saved);localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
-   }
-   try{sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
-   return saved;
-  }
-  return '';
  }
  function clearLocalSessionUser(){
-  try{sessionStorage.removeItem(LOCAL_SESSION_KEY);sessionStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
-  try{localStorage.removeItem(LOCAL_SESSION_KEY);localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}catch(error){}
+  try{localStorage.removeItem(LOCAL_SESSION_KEY);localStorage.removeItem(LEGACY_LOCAL_SESSION_KEY);}
+  catch(error){console.warn('The browser-wide demo sign-in could not be cleared.',error);}
  }
  screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;
  const ar=root.lang==='ar';
@@ -2435,12 +2391,46 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
    setBusy(false);
   }
  }
+ function showLocalSignIn(){
+  window.__TEAM_FOLLOW_UP_CLEAR_VIEW_STATE?.();
+  window.__TEAM_FOLLOW_UP_AUTH_CONTEXT=null;
+  const app=$('app');
+  root.classList.add('auth-pending');
+  document.body.classList.add('signin-open');
+  app.inert=true;app.setAttribute('aria-hidden','true');
+  screen.hidden=false;enterDefaultMode();
+  $('signInUsername').value='';$('signInPassword').value='';
+  $('signInModeNote').hidden=false;
+  $('signInUsername').focus({preventScroll:true});
+ }
+ function applyLocalBrowserIdentity(userId){
+  const id=String(userId||'');
+  if(!validIds.includes(id)){showLocalSignIn();return;}
+  if(state.authMode!=='local')return;
+  if(window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId===id&&state.appStarted)return;
+  const username=localTeamUsers.find(user=>user.id===id)?.aliases[0]||'';
+  finishVisualAuth(makeLocalContext(id,username));
+ }
+ function handleLocalSessionStorageEvent(event){
+  if(state.authMode!=='local'||event?.key!==LOCAL_SESSION_KEY)return;
+  if(event.storageArea&&event.storageArea!==window.localStorage)return;
+  // Read the current value, not event.newValue: several changes may have been
+  // queued before this tab processes the storage event.
+  let current='';
+  try{current=localStorage.getItem(LOCAL_SESSION_KEY)||'';}catch(error){}
+  if(validIds.includes(current))applyLocalBrowserIdentity(current);
+  else showLocalSignIn();
+ }
  async function signOut(){
+  if(state.authMode==='local'){
+   clearLocalSessionUser();
+   showLocalSignIn();
+   return;
+  }
   window.__TEAM_FOLLOW_UP_CLEAR_VIEW_STATE?.();
   const app=$('app');root.classList.add('auth-pending');document.body.classList.add('signin-open');app.inert=true;app.setAttribute('aria-hidden','true');screen.hidden=false;enterDefaultMode();$('signInUsername').value='';$('signInPassword').value='';
-  if(state.authMode==='local')clearLocalSessionUser();
-  else{try{await state.modules?.signOut({global:true});}catch(e){try{await state.modules?.signOut();}catch(_){}}}
-  window.__TEAM_FOLLOW_UP_AUTH_CONTEXT=null;$('signInModeNote').hidden=state.authMode!=='local';$('signInUsername').focus({preventScroll:true});
+  try{await state.modules?.signOut({global:true});}catch(e){try{await state.modules?.signOut();}catch(_){}}
+  window.__TEAM_FOLLOW_UP_AUTH_CONTEXT=null;$('signInModeNote').hidden=true;$('signInUsername').focus({preventScroll:true});
  }
  window.TeamFollowUpAuth={signOut,async getAccessToken(options={}){if(state.authMode==='local')throw new Error('Local authentication has no Cognito access token.');return getCognitoAccessToken(options?.forceRefresh===true);},async authenticatedFetch(path,init={}){
   if(state.authMode==='local')throw new Error('Authenticated API calls are disabled in local-auth mode. Configure Cognito before connecting the backend.');
@@ -2526,6 +2516,7 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
    }
   }catch(e){setError(copy.sdkError);$('signInSubmit').disabled=true;$('signInForgotPassword').hidden=true;}
  }
+ window.addEventListener('storage',handleLocalSessionStorageEvent);
  $('signInForm').addEventListener('submit',handleSubmit);
  $('signInRetrySession').addEventListener('click',retrySessionRestoration);
  $('signInForgotPassword').addEventListener('click',beginPasswordReset);
