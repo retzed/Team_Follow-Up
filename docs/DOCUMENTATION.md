@@ -205,7 +205,7 @@ The local adapter emulates common access patterns using derived fields for top-l
 ### Storage and isolation
 
 - `localStorage` stores the demo workspace and its built-in logical tables.
-- `localStorage` must be available and is the durable demo-session record. `sessionStorage` preserves a tab's identity when multiple demo users are active in separate tabs; after a tab refresh or when tab storage is missing, the app restores from `localStorage`. Sign-in is rejected when the persistent session record cannot be written and verified, even when `sessionStorage` works.
+- `localStorage` is the only demo-session store. One browser-profile identity is shared across every tab on this site origin and survives refreshes, tab closure, and browser restarts. Signing in or out in one tab updates all other open tabs. Separate browser profiles and private sessions are isolated. Clearing this site's website data removes the identity; clearing history alone may not remove website storage unless the browser's clearing options include it.
 - Demo users within the same browser profile see the same local workspace.
 - Built-in item mutations create a compact change signal containing affected item, hierarchy, and previous/current assignee IDs. The writer persists the merged snapshot before publishing the signal through `BroadcastChannel`; the browser `storage` event is the fallback transport.
 - Cross-tab writes use the Web Locks API when available to serialize the read/merge/write critical section. A tab merges only the item IDs and profile IDs it actually changed into the latest persisted snapshot; it never replaces the complete workspace with a stale in-memory snapshot. This prevents a write from one tab from silently erasing unrelated updates made by another tab.
