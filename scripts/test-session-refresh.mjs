@@ -50,8 +50,8 @@ assert.doesNotMatch(html, /if\(!data\.parents\.some\(parent=>String\(parent\.id\
   'No final hydration block may override an unresolved or successfully restored parent selection.');
 assert.ok(html.includes("const selectedParentId=String(ui.selectedParentId||'');const parent=data.parents.find(p=>String(p.id)===selectedParentId);"),
   'Detail rendering must compare normalized parent IDs and must not silently select the first item for a non-empty saved ID.');
-assert.match(html, /if\(!dataLoadState\.active&&data\.parents\.length&&!data\.parents\.some\(p=>p\.id===ui\.selectedParentId\)\)ui\.selectedParentId=data\.parents\[0\]\.id;/,
-  'Built-in startup must not erase the restored selection when its parent cache is empty.');
+assert.ok(html.includes("if(!dataLoadState.active&&data.parents.length&&!data.parents.some(p=>String(p.id)===String(ui.selectedParentId)))ui.selectedParentId=defaultWorkspaceParentId(data.parents);"),
+  'Built-in startup must preserve a valid restored selection and use the most-recently-updated root only when its cached selection is invalid.');
 assert.ok(html.includes("if(restoredParentState==='missing'||(!ui.selectedParentId&&data.parents.length))ui.selectedParentId=defaultWorkspaceParentId(data.parents);"),
   'Fallback selection is applied only when the exact-ID resolver confirms the saved parent is absent, or when there was no selection.');
 assert.ok(html.includes("else if(ui.accountTab==='pinned'&&!ui.accountPinnedLoaded)void loadAccountPinnedItems();"),
