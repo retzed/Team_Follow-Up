@@ -1,5 +1,11 @@
 # Application Release Notes
 
+## 4 November 2026 — Retain the selected parent through refresh reconciliation
+
+- Parent selection now writes the current per-tab view snapshot immediately when a Project/Job or assigned child is opened.
+- After all parent pages load, the app resolves the exact saved parent ID if it is not in the list. It only falls back when the resolver confirms the parent is missing; temporary resolver failures retain the selection.
+- Removed the final unconditional first-parent reset and made detail lookup compare normalized IDs. Added regression coverage for present, missing, and temporarily unresolvable selections.
+
 ## 4 November 2026 — Keep off-page parent selections during refresh
 
 - The first page of top-level Projects/Jobs is no longer treated as the complete parent set. Bootstrap follows every continuation page before validating the saved selection.
