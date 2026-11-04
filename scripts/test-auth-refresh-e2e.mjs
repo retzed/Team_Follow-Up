@@ -45,6 +45,8 @@ function makeGateEnvironment({ session, local, config = null } = {}) {
   const sessionStorage = session || memoryStorage();
   const localStorage = local || memoryStorage();
   const windowListeners = Object.create(null);
+  const documentListeners = Object.create(null);
+  let domParsed = false;
   const elements = new Map();
   const injectedScripts = [];
   const element = id => {
@@ -78,10 +80,22 @@ function makeGateEnvironment({ session, local, config = null } = {}) {
   };
   const document = {
     title: 'Team Follow-Up',
+    readyState: 'loading',
     documentElement: root,
     body,
+    addEventListener(name, callback) {
+      (documentListeners[name] ||= []).push(callback);
+    },
+    finishParsing() {
+      domParsed = true;
+      this.readyState = 'interactive';
+      for (const callback of documentListeners.DOMContentLoaded || []) callback({ type: 'DOMContentLoaded' });
+      this.readyState = 'complete';
+    },
     getElementById(id) {
-      if (id === 'application-bootstrap') return { id, textContent: '/* real app bootstrap hand-off */' };
+      if (id === 'application-bootstrap') {
+        return domParsed ? { id, textContent: '/* real app bootstrap hand-off */' } : null;
+      }
       return element(id);
     },
     createElement(tagName) { return element('created-' + tagName + '-' + injectedScripts.length); }
@@ -108,7 +122,10 @@ function makeGateEnvironment({ session, local, config = null } = {}) {
     console
   };
   vm.runInNewContext(gateSource, sandbox, { timeout: 10000 });
-  return { window, document, elements, injectedScripts, sessionStorage, localStorage };
+  return {
+    window, document, elements, injectedScripts, sessionStorage, localStorage,
+    finishParsing() { document.finishParsing(); }
+  };
 }
 
 const blockedTabStorage = new Proxy({}, {
@@ -122,6 +139,7 @@ const firstLoad = makeGateEnvironment({ session: blockedTabStorage, local });
 assert.equal(firstLoad.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
 assert.equal(firstLoad.elements.get('signInScreen').hidden, false);
 assert.equal(firstLoad.injectedScripts.length, 0);
+firstLoad.finishParsing();
 
 // Sign in through the real pre-auth form handler. The gate must persist first,
 // then publish the auth context and inject the application bootstrap script.
@@ -139,12 +157,20 @@ assert.equal(firstLoad.injectedScripts[0].textContent, '/* real app bootstrap ha
 // Hard reload reconstructs JavaScript and the DOM while retaining only
 // the browser profile's localStorage. sessionStorage throws if it is touched.
 const refreshed = makeGateEnvironment({ session: blockedTabStorage, local });
+// Reproduce the actual parser order: the pre-auth gate has executed, but
+// application-bootstrap has not entered the DOM yet.
+assert.equal(refreshed.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
+assert.equal(refreshed.elements.get('signInScreen').hidden, false);
+assert.equal(refreshed.injectedScripts.length, 0,
+  'Session restoration must wait instead of failing while the later bootstrap node is not parsed.');
+refreshed.finishParsing();
 assert.equal(refreshed.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u2');
 assert.equal(refreshed.elements.get('signInScreen').hidden, true);
 assert.equal(refreshed.injectedScripts.length, 1);
 
 // A second tab in the same browser profile restores the same single identity.
 const secondTab = makeGateEnvironment({ session: blockedTabStorage, local });
+secondTab.finishParsing();
 assert.equal(secondTab.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u2');
 assert.equal(secondTab.elements.get('signInScreen').hidden, true);
 
@@ -154,6 +180,7 @@ const tabOnlyRestore = makeGateEnvironment({
   session: seededTabOnlyStorage,
   local: memoryStorage()
 });
+tabOnlyRestore.finishParsing();
 assert.equal(tabOnlyRestore.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
 assert.equal(tabOnlyRestore.elements.get('signInScreen').hidden, false);
 assert.equal(tabOnlyRestore.injectedScripts.length, 0);
@@ -189,6 +216,7 @@ const separateBrowserProfile = makeGateEnvironment({
   session: blockedTabStorage,
   local: memoryStorage()
 });
+separateBrowserProfile.finishParsing();
 assert.equal(separateBrowserProfile.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT, null);
 assert.equal(separateBrowserProfile.elements.get('signInScreen').hidden, false);
 

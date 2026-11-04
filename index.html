@@ -2522,7 +2522,10 @@ function makeLocalContext(teamUserId,username){return {teamUserId,authMode:'loca
  $('signInUsername').addEventListener('input',()=>{if(state.mode==='signIn')setError('');});
  $('signInPassword').addEventListener('input',()=>{if(state.mode==='signIn')setError('');});
  $('signInChallengeInput').addEventListener('input',()=>setError(''));
- initialize();
+ // This controller appears before the application markup in index.html.
+ // Defer session restoration until the parser has created the inert app bootstrap node.
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize,{once:true});
+ else initialize();
 })();
 </script>
 <div class="app" id="app" inert aria-hidden="true">
