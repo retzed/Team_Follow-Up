@@ -5392,7 +5392,7 @@ async function startWorkspaceHydration(){
  }
 }
 // Start with the current cached workspace in built-in mode; API mode progressively populates the UI.
-if(!dataLoadState.active&&!data.parents.some(p=>p.id===ui.selectedParentId))ui.selectedParentId=data.parents[0]?.id||'';
+if(!dataLoadState.active&&data.parents.length&&!data.parents.some(p=>p.id===ui.selectedParentId))ui.selectedParentId=data.parents[0].id;
 window.__TEAM_FOLLOW_UP_DEMO_REALTIME_UNSUBSCRIBE=window.TeamFollowUpDataApi?.mode==='api'?null:window.TeamFollowUpDataApi?.subscribeRealtimeChanges?.(change=>{void queueDemoRealtimeChange(change);});
 setSignInState(Boolean(sessionUserIdAtLoad));
 render();
