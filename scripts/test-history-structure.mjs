@@ -280,7 +280,7 @@ const syncAssigneeStart = html.indexOf('function syncAssigneeControl(type,parent
 const syncAssigneeEnd = html.indexOf("$('#modalRoot').addEventListener('change'", syncAssigneeStart);
 assert.ok(syncAssigneeStart >= 0 && syncAssigneeEnd > syncAssigneeStart, 'Assignee control synchronization must be bounded.');
 const syncAssigneeSource = html.slice(syncAssigneeStart, syncAssigneeEnd);
-assert.ok(syncAssigneeSource.includes('parentChanged||typeChanged||!owner') && syncAssigneeSource.includes('parentCreatorAssigneeId(parent)'), 'Changing the new child form to Follow-up must default to the immediate parent creator.');
+assert.ok(syncAssigneeSource.includes('parentChanged||typeChanged||!selected.length') && syncAssigneeSource.includes('parentCreatorAssigneeId(parent)'), 'Changing the new child form to Follow-up must default to the immediate parent creator.');
 
 const submitStart = html.indexOf('function handleItemSubmit(form){');
 const submitEnd = html.indexOf('\nfunction ', submitStart + 10);
