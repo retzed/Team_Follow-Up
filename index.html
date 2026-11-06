@@ -2047,10 +2047,15 @@ function readTables(includeActivity=false){
   }
   scheduleTableStorageSave();
  }
+ function builtinAssigneeIds(item){
+  const raw=Array.isArray(item?.assigneeIds)?item.assigneeIds:[item?.ownerId];
+  const ids=[...new Set((raw||[]).map(value=>String(value??'').trim()).filter(id=>Boolean(id)&&id.toLowerCase()!=='root'))];
+  return item?.type==='followup'?ids.slice(0,1):ids;
+ }
  function ensureIndexFields(item){
   const x=clone(item)||{};const itemId=String(x.itemId||x.id||'');delete x.id;x.itemId=itemId;
   const top=['project','job'].includes(x.type);const rootId=top?itemId:String(x.rootParentId||x.parentId||'');
-  const ids=itemAssigneeIds(x);x.assigneeIds=ids;x.ownerId=ids[0]||'';
+  const ids=builtinAssigneeIds(x);x.assigneeIds=ids;x.ownerId=ids[0]||'';
   x.listPK=top?'TOP_LEVEL':`PARENT#${String(x.parentId||'')}`;
   x.updatedSort=sortStamp(x.updatedAt,itemId);x.createdSort=sortStamp(x.createdAt,itemId);
   x.rootPK=`ROOT#${rootId}`;x.rootUpdatedSort=sortStamp(x.updatedAt,itemId);
