@@ -67,16 +67,18 @@ Archived items continue to reserve their names; archiving or deleting an item do
 
 ### Common item fields
 
-A work item can contain an identifier, item type, name, description, parent/root references where applicable, creator, assignee, status, priority, creation/update timestamps, and applicable due-date information. The UI labels the status and priority values using the selected interface language; the persisted values remain stable machine-readable values.
+A work item can contain an identifier, item type, name, description, parent/root references where applicable, creator, assignee, priority, and creation/update timestamps. Projects and Jobs, plus Tasks, also have status and optional due dates. Follow-ups deliberately have neither status nor due date. The UI labels status and priority values using the selected interface language; persisted values remain stable machine-readable values.
 
-Supported statuses are:
+Supported statuses for Projects, Jobs, and Tasks are:
 
 - `not-started`
 - `in-progress`
 - `on-hold`
 - `completed`
 
-Child items use the priority scale `low`, `medium`, `high`, and `urgent`. The important/star control raises an item to the maximum priority. Status/assignment changes and item edits are expected to produce activity entries.
+Follow-ups do not have a status field or due-date field. Converting a Task to a Follow-up removes both values; converting back to a Task starts with `not-started` and no due date. Legacy Follow-up values are ignored and removed during local demo-data normalization or the next server-side update/archive/restore.
+
+Child items use the priority scale `low`, `medium`, `high`, and `urgent`. The important/star control raises an item to the maximum priority. Status changes are available only on Tasks (and parent Projects/Jobs); Follow-up edits record type/content/assignment/priority changes without status events. Status filters and Not Completed metrics exclude Follow-ups; due-date sorting/filtering also excludes them.
 
 ## 3. Search, assignment, history, and archive behavior
 
