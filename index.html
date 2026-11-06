@@ -1653,6 +1653,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
   const parentId=String(x.parentId||'');
   const parentRow=parentId?(workById.get(parentId)||archiveById.get(parentId)):null;
   delete x.deletedAt;
+  if(x.type==='followup'){delete x.status;delete x.dueDate;}
   x.itemId=itemId;x.archiveId=itemId;x.archiveRootId=rootId;x.archiveRootName=rootId===itemId?String(x.name||''):String(rootRow?.name||rootRow?.archiveRootName||'');x.archiveRootType=rootId===itemId?String(x.type||''):String(rootRow?.type||rootRow?.archiveRootType||'');
   x.archiveParentId=x.parentId||null;x.archiveParentName=String(parentRow?.name||parentRow?.archiveParentName||x.archiveParentName||'');x.archivedAt=archivedAt||x.archivedAt||now();x.archivedByUserId=archivedByUserId||x.updatedByUserId||x.updatedBy||'';
   x.archivePK='ARCHIVE';x.archiveSort=sortStamp(x.archivedAt,itemId);x.archiveRootPK=`ROOT#${rootId}`;x.archiveRootSort=sortStamp(x.archivedAt,itemId);
@@ -1663,6 +1664,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
   if(!Array.isArray(tables.archiveItems))tables.archiveItems=[];
   const archivedIds=new Set(tables.archiveItems.map(x=>String(x.archiveId||x.itemId||x.id||'')));
   const remaining=[];let migrated=false;
+  for(const row of [...(tables.workItems||[]),...(tables.archiveItems||[])]){if(row?.type==='followup'){if('status'in row||'dueDate'in row)migrated=true;delete row.status;delete row.dueDate;}}
   for(const row of tables.workItems||[]){
    if(row.deletedAt){const id=String(row.itemId||row.id||'');if(id&&!archivedIds.has(id)){tables.archiveItems.push(buildArchiveRecord(row,tables,row.deletedAt,row.updatedByUserId||row.updatedBy));archivedIds.add(id);}migrated=true;}
    else remaining.push(row);
@@ -2084,6 +2086,7 @@ function readTables(includeActivity=false){
  }
  function toAppItem(record){
   const x=clone(record)||{};x.id=String(x.id||x.itemId||'');delete x.itemId;
+  if(x.type==='followup'){delete x.status;delete x.dueDate;}
   for(const k of ['listPK','updatedSort','createdSort','rootPK','rootUpdatedSort','assigneePK','assigneeUpdatedSort','assigneeCreatedSort','deletedAt'])delete x[k];
   return x;
  }
@@ -2232,7 +2235,7 @@ function readTables(includeActivity=false){
    const selectionRoots=ordered.filter(row=>!selectedMap.has(String(row.parentId||'')));
    const isInSelectedSubtree=(row,rootId)=>{let cursor=row,seen=new Set();while(cursor&&!seen.has(String(cursor.itemId||cursor.archiveId))){const id=String(cursor.itemId||cursor.archiveId);if(id===String(rootId))return true;seen.add(id);cursor=selectedMap.get(String(cursor.parentId||''));}return false;};
    const summaryForRoot=rootRaw=>{const rootId=String(rootRaw.itemId||rootRaw.archiveId);const group=ordered.filter(row=>isInSelectedSubtree(row,rootId));const item=group.find(row=>String(row.itemId||row.archiveId)===rootId)||rootRaw;const id=String(item.itemId||item.archiveId);const rootParentId=String(item.rootParentId||(['project','job'].includes(item.type)?id:''));const rootRecord=selectedMap.get(rootParentId)||activeById.get(rootParentId)||archiveById.get(rootParentId)||item;const rootName=String(rootId===id?item.name:(rootRecord?.name||item.archiveRootName||''));const rootType=String(rootRecord?.type||item.archiveRootType||(['project','job'].includes(item.type)?item.type:''));const descCount=Math.max(0,group.length-1);const action=`Restored ${item.type}: ${item.name}`;return storeActivityEvent(tables,{id:`evt_restore_${id}_${Date.now()}_${Math.random().toString(36).slice(2,9)}`,itemId:id,itemName:item.name,itemType:item.type,rootParentId:rootParentId||id,rootParentName:rootName,rootParentType:rootType,rootTypeSnapshot:rootType,parentId:item.parentId||null,userId:actor||item.updatedByUserId||item.updatedBy||item.createdByUserId||item.createdBy||'',action,summary:action,kind:'restore',at:restoredAt,ancestorIds:item.parentId?[String(item.parentId),...(rootParentId&&rootParentId!==item.parentId?[rootParentId]:[])]:[],bulkOperation:descCount?'restore-subtree':'restore-item',affectedCount:group.length,affectedDescendantCount:descCount});};
-   for(const raw of ordered){const id=String(raw.itemId||raw.archiveId);const item=clone(raw);assertUniqueItemName(item.name,id);for(const k of ['archiveId','archivePK','archiveSort','archiveRootPK','archiveRootSort','archiveRootId','archiveRootName','archiveRootType','archiveParentId','archiveParentName','archivedAt','archivedByUserId','deletedAt'])delete item[k];item.updatedAt=restoredAt;if(actor){if('createdByUserId' in item||'updatedByUserId' in item)item.updatedByUserId=actor;else item.updatedBy=actor;}else if(item.updatedBy)item.updatedByUserId=item.updatedBy;item.version=(Number(item.version)||0)+1;const indexed=ensureIndexFields(item);tables.workItems.push(indexed);restored.push(toAppItem(indexed));activeMap.set(id,indexed);activeById.set(id,indexed);}
+   for(const raw of ordered){const id=String(raw.itemId||raw.archiveId);const item=clone(raw);assertUniqueItemName(item.name,id);for(const k of ['archiveId','archivePK','archiveSort','archiveRootPK','archiveRootSort','archiveRootId','archiveRootName','archiveRootType','archiveParentId','archiveParentName','archivedAt','archivedByUserId','deletedAt'])delete item[k];if(item.type==='followup'){delete item.status;delete item.dueDate;}item.updatedAt=restoredAt;if(actor){if('createdByUserId' in item||'updatedByUserId' in item)item.updatedByUserId=actor;else item.updatedBy=actor;}else if(item.updatedBy)item.updatedByUserId=item.updatedBy;item.version=(Number(item.version)||0)+1;const indexed=ensureIndexFields(item);tables.workItems.push(indexed);restored.push(toAppItem(indexed));activeMap.set(id,indexed);activeById.set(id,indexed);}
    tables.archiveItems=tables.archiveItems.filter(x=>!restoredArchiveIds.has(String(x.archiveId||x.itemId)));
    for(const rootRaw of selectionRoots)savedEvents.push(toAppEvent(summaryForRoot(rootRaw)));
    persist();return respond({ok:true,restoredIds:restored.map(x=>x.id),restoredItems:restored,activityEvents:savedEvents});
