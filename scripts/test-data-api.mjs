@@ -66,23 +66,6 @@ assert.equal(state.parents.length, 2, 'bootstrap returns two top-level items');
 assert.equal(state.children.length, 0, 'bootstrap defers descendants until their parent is selected');
 assert.equal(state.activity.length, 0, 'bootstrap never fetches Activity history');
 
-const conversionTask = {
-  id: 't-convert-followup', type: 'task', parentId: 'p-old', rootParentId: 'p-old',
-  name: 'Task to Follow-up conversion', description: '', status: 'completed',
-  dueDate: '2026-11-10', priority: 'medium', ownerId: 'u2',
-  createdBy: 'u1', updatedBy: 'u2', createdAt: '2026-01-07T00:00:00.000Z',
-  updatedAt: '2026-01-07T00:00:00.000Z'
-};
-await api.request('POST', '/items', conversionTask);
-const convertedFollowup = await api.request('PATCH', '/items/t-convert-followup', {
-  ...conversionTask, type: 'followup', status: 'completed', dueDate: '2026-11-10'
-});
-assert.equal(convertedFollowup.type, 'followup');
-assert.ok(!Object.hasOwn(convertedFollowup, 'status') && !Object.hasOwn(convertedFollowup, 'dueDate'), 'Task-to-Follow-up conversion must remove both task-only fields.');
-const convertedTask = await api.request('PATCH', '/items/t-convert-followup', { ...convertedFollowup, type: 'task' });
-assert.equal(convertedTask.type, 'task');
-assert.equal(convertedTask.status, 'not-started', 'Follow-up-to-Task conversion initializes Not Started status.');
-assert.equal(convertedTask.dueDate, '', 'Follow-up-to-Task conversion starts without a due date.');
 await assert.rejects(
   api.request('POST', '/items', {
     id: 'duplicate-job-name', type: 'job', name: ' older   PROJECT ',
@@ -122,6 +105,24 @@ assert.equal(nestedChildren.items[0].id, 'f-nested');
 const assigned = await api.queryAssigned('u2');
 assert.ok(assigned.items.some(x => x.id === 't-1'));
 assert.ok(assigned.items.every(x => x.ownerId === 'u2'));
+
+const conversionTask = {
+  id: 't-convert-followup', type: 'task', parentId: 'p-old', rootParentId: 'p-old',
+  name: 'Task to Follow-up conversion', description: '', status: 'completed',
+  dueDate: '2026-11-10', priority: 'medium', ownerId: 'u2',
+  createdBy: 'u1', updatedBy: 'u2', createdAt: '2026-01-07T00:00:00.000Z',
+  updatedAt: '2026-01-07T00:00:00.000Z'
+};
+await api.request('POST', '/items', conversionTask);
+const convertedFollowup = await api.request('PATCH', '/items/t-convert-followup', {
+  ...conversionTask, type: 'followup', status: 'completed', dueDate: '2026-11-10'
+});
+assert.equal(convertedFollowup.type, 'followup');
+assert.ok(!Object.hasOwn(convertedFollowup, 'status') && !Object.hasOwn(convertedFollowup, 'dueDate'), 'Task-to-Follow-up conversion must remove both task-only fields.');
+const convertedTask = await api.request('PATCH', '/items/t-convert-followup', { ...convertedFollowup, type: 'task' });
+assert.equal(convertedTask.type, 'task');
+assert.equal(convertedTask.status, 'not-started', 'Follow-up-to-Task conversion initializes Not Started status.');
+assert.equal(convertedTask.dueDate, '', 'Follow-up-to-Task conversion starts without a due date.');
 
 const createdAt = new Date().toISOString();
 const event = { id: 'evt-transaction-create', itemId: 'p-test', itemName: 'Test project', itemType: 'project', rootParentId: 'p-test', userId: 'u1', action: 'Created project: Test project', kind: 'create', at: createdAt };
