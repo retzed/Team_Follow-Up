@@ -2212,12 +2212,12 @@ function readTables(includeActivity=false){
   }
   if(method==='POST'&&clean==='/items'){
    const payload=clone(body)||{};const relatedEvents=Array.isArray(payload.activityEvents)?payload.activityEvents:[];delete payload.activityEvents;
-   const x=ensureIndexFields(payload);if(!x.itemId)throw new Error('itemId is required.');assertUniqueItemName(x.name,x.itemId);const existing=tables.workItems.findIndex(i=>i.itemId===x.itemId);if(existing>=0)tables.workItems[existing]=x;else tables.workItems.push(x);
+   const x=ensureIndexFields(payload);if(x.type==='followup'){delete x.status;delete x.dueDate;}if(!x.itemId)throw new Error('itemId is required.');assertUniqueItemName(x.name,x.itemId);const existing=tables.workItems.findIndex(i=>i.itemId===x.itemId);if(existing>=0)tables.workItems[existing]=x;else tables.workItems.push(x);
    for(const raw of relatedEvents)storeActivityEvent(tables,raw);
    persist();return respond(toAppItem(x));
   }
   m=clean.match(/^\/items\/([^/]+)$/);
-  if(m&&method==='PATCH') {const id=decodeURIComponent(m[1]);const i=tables.workItems.findIndex(x=>x.itemId===id);if(i<0)throw new Error('Item not found.');const payload=clone(body)||{};const relatedEvents=Array.isArray(payload.activityEvents)?payload.activityEvents:[];delete payload.activityEvents;const updated=ensureIndexFields({...tables.workItems[i],...payload,itemId:id});assertUniqueItemName(updated.name,id);tables.workItems[i]=updated;for(const raw of relatedEvents)storeActivityEvent(tables,raw);persist();return respond(toAppItem(tables.workItems[i]));}
+  if(m&&method==='PATCH') {const id=decodeURIComponent(m[1]);const i=tables.workItems.findIndex(x=>x.itemId===id);if(i<0)throw new Error('Item not found.');const payload=clone(body)||{};const relatedEvents=Array.isArray(payload.activityEvents)?payload.activityEvents:[];delete payload.activityEvents;const previous=tables.workItems[i];const updated=ensureIndexFields({...previous,...payload,itemId:id});if(updated.type==='followup'){delete updated.status;delete updated.dueDate;}else if(previous.type==='followup'&&updated.type==='task'){updated.status='not-started';updated.dueDate='';}assertUniqueItemName(updated.name,id);tables.workItems[i]=updated;for(const raw of relatedEvents)storeActivityEvent(tables,raw);persist();return respond(toAppItem(tables.workItems[i]));}
   if(method==='GET'&&clean==='/archive'){
    let rows=(tables.archiveItems||[]).slice();const queryText=(q.get('q')||'').toLocaleLowerCase();const type=q.get('type')||'all';const root=q.get('rootParentId');
    if(type!=='all')rows=rows.filter(x=>x.type===type);if(root)rows=rows.filter(x=>String(x.archiveRootId||x.rootParentId||x.itemId)===root);
