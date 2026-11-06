@@ -55,6 +55,8 @@ for (const item of allItems) {
   } else if (item.type === 'followup') {
     const parent = byId.get(String(item.parentId));
     assert.ok(parent && ['project', 'job', 'task'].includes(parent.type), 'Follow-ups must have a supported parent.');
+    assert.ok(!Object.hasOwn(item, 'status'), 'Follow-ups must not have a status field.');
+    assert.ok(!Object.hasOwn(item, 'dueDate'), 'Follow-ups must not have a due-date field.');
   } else {
     assert.equal(item.parentId, undefined, 'Projects and Jobs are top-level items.');
   }
@@ -69,7 +71,7 @@ for (const project of projects) {
   const projectTasks = tasks.filter(item => item.parentId === project.id);
   taskCounts.add(projectTasks.length);
   directFollowupCounts.add(direct.length);
-  notCompletedCounts.add([...projectTasks, ...direct, ...followups.filter(item => item.rootParentId === project.id && item.parentId !== project.id)].filter(item => item.status !== 'completed').length);
+  notCompletedCounts.add(projectTasks.filter(item => item.status !== 'completed').length);
   assert.ok(projectTasks.length >= 3 && projectTasks.length <= 5, project.name + ' has a varied workload of three to five documentation Tasks.');
   assert.ok(direct.length >= 1 && direct.length <= 4, project.name + ' has a varied number of direct chapter checkpoints.');
   for (const task of projectTasks) {
