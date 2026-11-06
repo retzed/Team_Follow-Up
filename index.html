@@ -1701,7 +1701,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
     const rootId=builtinItemRoot(row);if(rootId)rootParentIds.add(rootId);
     if(type==='project'||type==='job')topLevelIds.add(rowId);
     const parentId=String(row.parentId||row.archiveParentId||'');if(parentId)parentIds.add(parentId);
-    const rowAssigneeIds=Array.isArray(row.assigneeIds)&&row.assigneeIds.length?row.assigneeIds:[row.ownerId||row.assignedTo||''];for(const assignedId of rowAssigneeIds){const safeId=String(assignedId||'').trim();if(safeId&&safeId.toLowerCase()!=='root')assigneeIds.add(safeId);}
+    const rowAssigneeIds=Array.isArray(row.assigneeIds)&&row.assigneeIds.length?row.assigneeIds:[row.ownerId||row.assignedTo||''];for(const assignedId of rowAssigneeIds){const safeId=String(assignedId||'').trim();if(safeId&&safeId.toLowerCase()!=='root')assigneeIds.add(safeId);}if(row.assigneeMode==='all')assigneeIds.add('ALL_USERS');
     if(type==='project'||type==='job'||type==='task'){
      for(const descendant of allRows){
       const descendantId=String(descendant.itemId||descendant.archiveId||descendant.id||'');
@@ -1709,7 +1709,7 @@ window.TEAM_FOLLOW_UP_CONFIG = Object.freeze({
       const belongs=type==='task'
        ?String(descendant.parentId||descendant.archiveParentId||'')===rowId
        :String(descendant.rootParentId||descendant.archiveRootId||builtinItemRoot(descendant)||'')===rowId;
-      if(belongs){const descendantAssigneeIds=Array.isArray(descendant.assigneeIds)&&descendant.assigneeIds.length?descendant.assigneeIds:[descendant.ownerId||descendant.assignedTo||''];for(const assignedId of descendantAssigneeIds){const safeId=String(assignedId||'').trim();if(safeId&&safeId.toLowerCase()!=='root')assigneeIds.add(safeId);}}
+      if(belongs){const descendantAssigneeIds=Array.isArray(descendant.assigneeIds)&&descendant.assigneeIds.length?descendant.assigneeIds:[descendant.ownerId||descendant.assignedTo||''];for(const assignedId of descendantAssigneeIds){const safeId=String(assignedId||'').trim();if(safeId&&safeId.toLowerCase()!=='root')assigneeIds.add(safeId);}if(descendant.assigneeMode==='all')assigneeIds.add('ALL_USERS');}
      }
     }
    }
@@ -8713,7 +8713,7 @@ body.signin-open .scroll-to-top {
 #formAssigneeControl{position:relative;min-width:0}
 .assignee-picker-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:39px;padding:8px 11px;border:1px solid var(--border);border-radius:9px;background:var(--panel);color:var(--text);text-align:start;font-size:12px}
 .assignee-picker-trigger:hover{background:var(--panel-2)}
-.assignee-picker-trigger[aria-expanded="true"]{border-color:var(--accent);box-shadow:var(--focus)}
+.assignee-picker-trigger[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .assignee-picker-trigger [data-assignee-summary]{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .assignee-picker-menu{position:fixed;z-index:10050;width:min(360px,calc(100vw - 20px));max-height:min(290px,calc(100vh - 20px));overflow:auto;padding:9px;border:1px solid var(--border);border-radius:11px;background:var(--panel);box-shadow:var(--shadow)}
 .assignee-picker-menu[hidden]{display:none!important}
