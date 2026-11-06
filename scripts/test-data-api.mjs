@@ -83,6 +83,7 @@ assert.ok(!(window.__TEAM_FOLLOW_UP_API_LOG || []).some(x => /\/activity/.test(x
 assert.ok(!(window.__TEAM_FOLLOW_UP_API_LOG || []).some(x => /rootParentId=/.test(x.path)), 'startup does not fetch every root hierarchy');
 const selectedRootItems = await api.queryRootItems('p-old');
 assert.deepEqual(Array.from(selectedRootItems.items, x => x.id).sort(), ['f-direct', 'f-nested', 't-1'], 'selecting one root loads only its descendants');
+assert.ok(selectedRootItems.items.filter(item => item.type === 'followup').every(item => !Object.hasOwn(item, 'status') && !Object.hasOwn(item, 'dueDate')), 'Legacy Follow-up fields are normalized when loading existing local records.');
 
 const tables = JSON.parse(memory.get(tableKey));
 assert.equal(tables.workItems.find(x => x.itemId === 'p-old').listPK, 'TOP_LEVEL');
