@@ -143,6 +143,11 @@ function createHandlerContext(userId, loading = false, resolvedItems = [], activ
     ensureRootChildrenLoaded: async () => { calls.roots += 1; },
     refreshActivityFor: async (id, scope) => { calls.activityRefreshes.push([id, scope]); },
     refreshApplicationHistory: silent => { calls.applicationHistoryRefreshes.push(silent); },
+    itemAssigneeIds: item => {
+      const raw = Array.isArray(item?.assigneeIds) ? item.assigneeIds : [item?.ownerId];
+      const ids = [...new Set((raw || []).map(value => String(value ?? '').trim()).filter(id => Boolean(id) && id.toLowerCase() !== 'root'))];
+      return item?.type === 'followup' ? ids.slice(0, 1) : ids;
+    },
     normalizeActivityEventForUi: event => event,
     mergeActivityEventsIntoWorkspace: rows => { calls.activityMerged.push(rows); data.activity.push(...rows); return rows.length > 0; },
     mergeActivityRows: (existing, incoming) => ({ rows: [...existing, ...incoming] }),
