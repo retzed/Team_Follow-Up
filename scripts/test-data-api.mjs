@@ -65,6 +65,24 @@ const state = await api.bootstrap({ users, parents, children, activity: [] });
 assert.equal(state.parents.length, 2, 'bootstrap returns two top-level items');
 assert.equal(state.children.length, 0, 'bootstrap defers descendants until their parent is selected');
 assert.equal(state.activity.length, 0, 'bootstrap never fetches Activity history');
+
+const conversionTask = {
+  id: 't-convert-followup', type: 'task', parentId: 'p-old', rootParentId: 'p-old',
+  name: 'Task to Follow-up conversion', description: '', status: 'completed',
+  dueDate: '2026-11-10', priority: 'medium', ownerId: 'u2',
+  createdBy: 'u1', updatedBy: 'u2', createdAt: '2026-01-07T00:00:00.000Z',
+  updatedAt: '2026-01-07T00:00:00.000Z'
+};
+await api.request('POST', '/items', conversionTask);
+const convertedFollowup = await api.request('PATCH', '/items/t-convert-followup', {
+  ...conversionTask, type: 'followup', status: 'completed', dueDate: '2026-11-10'
+});
+assert.equal(convertedFollowup.type, 'followup');
+assert.ok(!Object.hasOwn(convertedFollowup, 'status') && !Object.hasOwn(convertedFollowup, 'dueDate'), 'Task-to-Follow-up conversion must remove both task-only fields.');
+const convertedTask = await api.request('PATCH', '/items/t-convert-followup', { ...convertedFollowup, type: 'task' });
+assert.equal(convertedTask.type, 'task');
+assert.equal(convertedTask.status, 'not-started', 'Follow-up-to-Task conversion initializes Not Started status.');
+assert.equal(convertedTask.dueDate, '', 'Follow-up-to-Task conversion starts without a due date.');
 await assert.rejects(
   api.request('POST', '/items', {
     id: 'duplicate-job-name', type: 'job', name: ' older   PROJECT ',
@@ -149,10 +167,11 @@ assert.ok((window.__TEAM_FOLLOW_UP_API_LOG || []).some(x => x.method === 'GET' &
 // Deleting a parent cascades into its descendants in one API request and writes one summary event.
 const parentForDelete = { id: 'p-delete-tree', type: 'project', name: 'Delete tree project', description: '', status: 'in-progress', ownerId: 'u1', rootParentId: 'p-delete-tree', createdBy: 'u1', updatedBy: 'u1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
 const taskForDelete = { id: 't-delete-tree', type: 'task', name: 'Delete tree task', description: '', status: 'not-started', priority: 'medium', ownerId: 'u2', parentId: 'p-delete-tree', rootParentId: 'p-delete-tree', createdBy: 'u1', updatedBy: 'u2', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-const followupForDelete = { id: 'f-delete-tree', type: 'followup', name: 'Delete tree follow-up', description: '', status: 'not-started', priority: 'low', ownerId: 'u3', parentId: 't-delete-tree', rootParentId: 'p-delete-tree', createdBy: 'u2', updatedBy: 'u3', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+const followupForDelete = { id: 'f-delete-tree', type: 'followup', name: 'Delete tree follow-up', description: '', status: 'not-started', dueDate: '2026-11-10', priority: 'low', ownerId: 'u3', parentId: 't-delete-tree', rootParentId: 'p-delete-tree', createdBy: 'u2', updatedBy: 'u3', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
 await api.request('POST', '/items', parentForDelete);
 await api.request('POST', '/items', taskForDelete);
-await api.request('POST', '/items', followupForDelete);
+const createdFollowup = await api.request('POST', '/items', followupForDelete);
+assert.ok(!Object.hasOwn(createdFollowup, 'status') && !Object.hasOwn(createdFollowup, 'dueDate'), 'New Follow-ups must not persist task-only fields.');
 const beforeDeleteCalls = (window.__TEAM_FOLLOW_UP_API_LOG || []).length;
 const deleteSummary = { id: 'evt-delete-tree-summary', itemId: 'p-delete-tree', itemName: 'Delete tree project', itemType: 'project', rootParentId: 'p-delete-tree', userId: 'u1', action: 'Deleted project: Delete tree project', kind: 'delete', at: new Date().toISOString(), bulkOperation: 'delete-subtree', affectedCount: 3, affectedDescendantCount: 2 };
 await api.commitSnapshot(
@@ -187,6 +206,7 @@ assert.ok(allTablesAfterDelete.workItems.some(x => x.itemId === 'p-delete-tree')
 assert.ok(!('archiveParentName' in allTablesAfterDelete.workItems.find(x => x.itemId === 't-delete-tree')), 'archive-only relationship snapshots are removed from the active record after restoration');
 const followupRestore = await api.restoreArchive(['f-delete-tree'], 'u2');
 assert.equal(followupRestore.restoredItems.length, 1, 'follow-up can be restored separately once its parent task is active');
+assert.ok(!Object.hasOwn(followupRestore.restoredItems[0], 'status') && !Object.hasOwn(followupRestore.restoredItems[0], 'dueDate'), 'Restored Follow-ups must remain free of task-only fields.');
 assert.equal(followupRestore.activityEvents.length, 1, 'restoring a single item produces one summary event');
 allTablesAfterDelete = JSON.parse(memory.get(tableKey));
 assert.ok(!allTablesAfterDelete.archiveItems.some(x => ['p-delete-tree', 't-delete-tree', 'f-delete-tree'].includes(x.itemId)), 'restored items are removed from the active Archive list');
