@@ -317,11 +317,11 @@ assert.ok(workspaceFixCss.includes('.mobile-search-toggle[aria-expanded="true"]'
 assert.ok(workspaceFixCss.includes('position:fixed !important; top:86px !important; bottom:auto !important;') && workspaceFixCss.includes('top:78px !important;'), 'The scroll-to-top button must stay at the top edge of the workspace below the sticky header.');
 
 
-const childCardStart=html.indexOf('function childCard(item,parent');
-const childCardEnd=html.indexOf('\nfunction childTreeFiltered(',childCardStart);
-assert.ok(childCardStart>=0&&childCardEnd>childCardStart,'The child card renderer must exist.');
-const childCardSource=html.slice(childCardStart,childCardEnd);
-assert.ok(childCardSource.indexOf("assigneeMarkup(item,'assignee','child-assignee')")>=0&&childCardSource.indexOf("assigneeMarkup(item,'assignee','child-assignee')")<childCardSource.indexOf('item.dueDate?'), 'Child cards must display the Assignee label before the Due date.');
+const followupOrderCardStart=html.indexOf('function childCard(item,parent');
+const followupOrderCardEnd=html.indexOf('\nfunction childTreeFiltered(',followupOrderCardStart);
+assert.ok(followupOrderCardStart>=0&&followupOrderCardEnd>followupOrderCardStart,'The child card renderer must exist.');
+const followupOrderCardSource=html.slice(followupOrderCardStart,followupOrderCardEnd);
+assert.ok(followupOrderCardSource.indexOf("assigneeMarkup(item,'assignee','child-assignee')")>=0&&followupOrderCardSource.indexOf("assigneeMarkup(item,'assignee','child-assignee')")<followupOrderCardSource.indexOf('item.dueDate?'), 'Child cards must display the Assignee label before the Due date.');
 
 const assignedRowStart=html.indexOf('function accountAssignedItemRow(item){');
 const assignedRowEnd=html.indexOf('\nfunction filteredAccountAssignedItems(',assignedRowStart);
