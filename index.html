@@ -3686,9 +3686,8 @@ function seedData(){
     const followUpdated=new Date(interpolate(followCreated,nowDate,0.72+(si%3)*0.04));
     const follow={
      id:'f'+taskNumber+'_'+(si+1),parentId:taskItem.id,rootParentId:root.id,type:'followup',
-     name:st.name,description:st.description,status:fixtureStatus(pi*4013+ti*131+si*17+29),
+     name:st.name,description:st.description,
      priority:priorities[(taskNumber+si)%priorities.length],ownerId:st.ownerId||memberIdAt(taskNumber+si),
-     dueDate:dateKey(ago(-(Math.max(1,spec.due+si-ti)))),
      createdAt:followCreated.toISOString(),createdBy:memberIdAt(pi*7+ti*3+si+2),
      updatedAt:followUpdated.toISOString(),updatedBy:st.ownerId||memberIdAt(taskNumber+si)
     };
@@ -3708,8 +3707,7 @@ function seedData(){
    const directUpdated=new Date(interpolate(directCreated,nowDate,0.76));
    const directItem={
     id:'fp'+(pi+1)+'_'+(di+1),parentId:root.id,rootParentId:root.id,type:'followup',
-    name:st.name,description:st.description,status:fixtureStatus(pi*20011+di*61+17),priority:di%2===0?'medium':'high',ownerId:st.ownerId,
-    dueDate:dateKey(ago(-(spec.due+2+di))),
+    name:st.name,description:st.description,priority:di%2===0?'medium':'high',ownerId:st.ownerId,
     createdAt:directCreated.toISOString(),createdBy:memberIdAt(pi+di+2),
     updatedAt:directUpdated.toISOString(),updatedBy:st.ownerId
    };
@@ -3780,7 +3778,7 @@ function seedData(){
   add(item,item.createdAt,item.createdBy,'Created '+typeLabel+': '+item.name,'create');
   add(item,atFraction(0.32),memberIdAt(index+1),'Updated description for '+typeLabel+': '+item.name+'.','update');
   add(item,atFraction(0.64),memberIdAt(index+3),'Updated assignee for '+typeLabel+': '+item.name+'.','update');
-  if(item.status==='not-started'){
+  if(item.type==='followup'||item.status==='not-started'){
    add(item,item.updatedAt,item.updatedBy,'Updated details for '+typeLabel+': '+item.name+'.','update');
   }else{
    add(item,item.updatedAt,item.updatedBy,'Status changed from Not started to '+statusLabel(item.status)+'.','status');
