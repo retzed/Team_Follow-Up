@@ -3743,8 +3743,7 @@ function seedData(){
   const updated=new Date(interpolate(created,nowDate,0.74+(ji%3)*0.04));
   const item={
    id:'fj'+(ji+1),parentId:job.id,rootParentId:job.id,type:'followup',
-   name:st.name,description:st.description,status:st.status,priority:priorities[ji%priorities.length],ownerId:st.ownerId,
-   dueDate:dateKey(ago(-(36+ji))),
+   name:st.name,description:st.description,priority:priorities[ji%priorities.length],ownerId:st.ownerId,
    createdAt:created.toISOString(),createdBy:memberIdAt(ji+1),
    updatedAt:updated.toISOString(),updatedBy:st.ownerId
   };
