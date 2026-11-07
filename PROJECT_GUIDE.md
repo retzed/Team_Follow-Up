@@ -198,7 +198,7 @@ npm run build
 
 The local adapter maintains four logical collections:
 
-- **Work items:** IDs, type, name/description, parent/root IDs, timestamps, status, priority, creator and assignee metadata, and index-like sort/search fields.
+- **Work items:** IDs, type, name/description, parent/root IDs, timestamps, priority, creator and assignee metadata, and index-like sort/search fields. Status and optional due date apply to Projects, Jobs, and Tasks; Follow-ups omit both fields.
 - **Activity events:** affected item, parent/root context, actor, timestamp, action, and fields required to search/filter the timeline.
 - **User profiles:** the six built-in demo identities and display/role metadata.
 - **Archive:** deleted work items with hierarchy and archive metadata so restore can validate parent relationships.
