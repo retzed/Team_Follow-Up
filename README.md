@@ -39,7 +39,7 @@ The entered username is used only for sign-in; **Display name** is the name show
 
 - Organizes work into **Projects** and **Jobs** at the top level.
 - Supports **Tasks** and **Follow-ups** beneath eligible parent items.
-- Tracks assignees, status, priority, due dates, descriptions, and changes.
+- Tracks assignees, priorities, descriptions, and changes across work items. Projects, Jobs, and Tasks also support status and optional due dates; Follow-ups do not have either field.
 - Provides item-specific and application-wide activity history.
 - Includes archive, hierarchy-aware restore, search, assignment filters, and overview counts.
 - Supports English and Arabic interface languages, including mixed-language item names.
