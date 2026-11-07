@@ -2055,7 +2055,7 @@ function readTables(includeActivity=false){
   return ids;
  }
  function ensureIndexFields(item){
-  const x=clone(item)||{};const itemId=String(x.itemId||x.id||'');delete x.id;x.itemId=itemId;
+  const x=clone(item)||{};if(x.type==='followup'){delete x.status;delete x.dueDate;}const itemId=String(x.itemId||x.id||'');delete x.id;x.itemId=itemId;
   const top=['project','job'].includes(x.type);const rootId=top?itemId:String(x.rootParentId||x.parentId||'');
   const ids=builtinAssigneeIds(x);x.assigneeIds=ids;x.ownerId=ids[0]||'';
   x.listPK=top?'TOP_LEVEL':`PARENT#${String(x.parentId||'')}`;
@@ -2123,16 +2123,15 @@ function readTables(includeActivity=false){
  function matchItem(x,p){
   if(x.deletedAt)return false;
   if(p.type&&p.type!=='all'&&x.type!==p.type)return false;
-  if(p.status&&p.status!=='all'&&p.status!=='not-completed'&&x.status!==p.status)return false;
-  if(p.status==='not-completed'&&x.status==='completed')return false;
+  if(p.status&&p.status!=='all'){if(x.type==='followup')return false;if(p.status==='not-completed'?x.status==='completed':x.status!==p.status)return false;}
   if(p.priority&&p.priority!=='all'&&x.priority!==p.priority)return false;
   if(p.query){const q=String(p.query).toLocaleLowerCase();if(!String(x.name||'').toLocaleLowerCase().includes(q)&&!String(x.description||'').toLocaleLowerCase().includes(q))return false;}
-  const dateMode=p.dateMode||'updated';const key=dateMode==='updated'?x.updatedAt:x.createdAt;
+  const dateMode=p.dateMode||'updated';const key=dateMode==='due'?x.dueDate:dateMode==='updated'?x.updatedAt:x.createdAt;if(dateMode==='due'&&!key)return false;
   if(p.from&&String(key||'').slice(0,10)<p.from)return false;
   if(p.to&&String(key||'').slice(0,10)>p.to)return false;
   return true;
  }
- function sortItems(rows,p){const dir=p.direction||(p.dateMode==='created-asc'?'asc':'desc');const mode=String(p.dateMode||'updated')==='updated'?'updated':'created';return rows.sort((a,b)=>itemSort(a,b,mode,dir));}
+ function sortItems(rows,p){const dateMode=String(p.dateMode||'updated');const dir=p.direction||(dateMode==='created-asc'||dateMode==='created'||dateMode==='due'?'asc':'desc');if(dateMode==='due')return rows.sort((a,b)=>(String(a.dueDate||'').localeCompare(String(b.dueDate||''))||String(a.itemId||'').localeCompare(String(b.itemId||'')))*(dir==='asc'?1:-1));const mode=dateMode==='updated'?'updated':'created';return rows.sort((a,b)=>itemSort(a,b,mode,dir));}
  async function mockRoute(method,path,body){
   // Yield before local-table work so the existing loading indicators can paint first.
   await new Promise(resolve=>{if(typeof setTimeout==='function')setTimeout(resolve,0);else resolve();});
@@ -2366,12 +2365,12 @@ function readTables(includeActivity=false){
   const savedEvents=mode==='api'&&Array.isArray(result?.activityEvents)?result.activityEvents.map(toAppEvent):payload.activityEvents.map(toAppEvent);
   return {item:savedItem,activityEvents:savedEvents};
  }
- async function queryTopLevel(options={}){const dateMode=options.dateMode||'updated';const p=new URLSearchParams({scope:'top-level',dateMode,direction:options.direction||(dateMode==='created'?'asc':'desc')});for(const [key,q] of Object.entries({type:options.type,status:options.status,priority:options.priority,q:options.query,from:options.from,to:options.to,limit:options.limit,offset:options.offset}))if(q!==undefined&&q!==null&&q!=='')p.set(key,String(q));const path=`/items?${p}`;return mode==='api'?requestCachedGet(path,`top-level-query:${p}`):request('GET',path);}
- async function queryChildren(parentId,options={}){const dateMode=options.dateMode||'updated';const p=new URLSearchParams({dateMode,direction:options.direction||(dateMode==='created'?'asc':'desc')});for(const [key,q] of Object.entries({type:options.type,status:options.status,priority:options.priority,q:options.query,from:options.from,to:options.to,limit:options.limit,offset:options.offset}))if(q!==undefined&&q!==null&&q!=='')p.set(key,String(q));const path=`/items/${encodeURIComponent(parentId)}/children?${p}`;return mode==='api'?requestCachedGet(path,`children-query:${parentId}:${p}`):request('GET',path);}
+ async function queryTopLevel(options={}){const dateMode=options.dateMode||'updated';const p=new URLSearchParams({scope:'top-level',dateMode,direction:options.direction||(dateMode==='created'||dateMode==='due'?'asc':'desc')});for(const [key,q] of Object.entries({type:options.type,status:options.status,priority:options.priority,q:options.query,from:options.from,to:options.to,limit:options.limit,offset:options.offset}))if(q!==undefined&&q!==null&&q!=='')p.set(key,String(q));const path=`/items?${p}`;return mode==='api'?requestCachedGet(path,`top-level-query:${p}`):request('GET',path);}
+ async function queryChildren(parentId,options={}){const dateMode=options.dateMode||'updated';const p=new URLSearchParams({dateMode,direction:options.direction||(dateMode==='created'||dateMode==='due'?'asc':'desc')});for(const [key,q] of Object.entries({type:options.type,status:options.status,priority:options.priority,q:options.query,from:options.from,to:options.to,limit:options.limit,offset:options.offset}))if(q!==undefined&&q!==null&&q!=='')p.set(key,String(q));const path=`/items/${encodeURIComponent(parentId)}/children?${p}`;return mode==='api'?requestCachedGet(path,`children-query:${parentId}:${p}`):request('GET',path);}
  async function queryRootItems(rootParentId,options={}){
   const rootId=String(rootParentId||'');if(!rootId)throw new Error('A Project or Job ID is required to load its items.');
   const dateMode=options.dateMode||'updated';
-  const params=new URLSearchParams({rootParentId:rootId,dateMode,direction:options.direction||(dateMode==='created'?'asc':'desc')});
+  const params=new URLSearchParams({rootParentId:rootId,dateMode,direction:options.direction||(dateMode==='created'||dateMode==='due'?'asc':'desc')});
   for(const [key,value] of Object.entries({type:options.type,status:options.status,priority:options.priority,q:options.query,from:options.from,to:options.to}))if(value!==undefined&&value!==null&&value!=='')params.set(key,String(value));
   let rows;
   if(mode==='api'&&!options.onPage){
@@ -2384,7 +2383,7 @@ function readTables(includeActivity=false){
   const items=rows.filter(item=>String(item.id)!==rootId&&item.type!=='project'&&item.type!=='job');
   return {items,count:items.length,nextOffset:null};
  }
- async function queryAssigned(userId,options={}){const dateMode=options.dateMode||'updated';const p=new URLSearchParams({userId,dateMode,direction:options.direction||(dateMode==='created'?'asc':'desc')});for(const [key,q] of Object.entries({type:options.type,status:options.status,priority:options.priority,q:options.query,from:options.from,to:options.to,limit:options.limit,offset:options.offset}))if(q!==undefined&&q!==null&&q!=='')p.set(key,String(q));const path=`/items/assigned-to-me?${p}`;return mode==='api'?requestCachedGet(path,`assigned-query:${userId}:${p}`):request('GET',path);}
+ async function queryAssigned(userId,options={}){const dateMode=options.dateMode||'updated';const p=new URLSearchParams({userId,dateMode,direction:options.direction||(dateMode==='created'||dateMode==='due'?'asc':'desc')});for(const [key,q] of Object.entries({type:options.type,status:options.status,priority:options.priority,q:options.query,from:options.from,to:options.to,limit:options.limit,offset:options.offset}))if(q!==undefined&&q!==null&&q!=='')p.set(key,String(q));const path=`/items/assigned-to-me?${p}`;return mode==='api'?requestCachedGet(path,`assigned-query:${userId}:${p}`):request('GET',path);}
  async function queryActivity(itemId,scope='item',query=''){const p=new URLSearchParams({scope});if(query)p.set('q',query);const path=`/items/${encodeURIComponent(itemId)}/activity?${p}`;return mode==='api'?requestCachedGet(path,`activity:${String(itemId)}:${scope}:${query}`):request('GET',path);}
  async function queryActivityForItems(itemIds){
   const ids=[...new Set((itemIds||[]).map(String).filter(Boolean))];
