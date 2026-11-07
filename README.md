@@ -1,6 +1,6 @@
 # Follow-Up
 
-A bilingual (English/Arabic) team workspace for organizing projects, jobs, tasks, follow-ups, assignments, priorities, and activity history.
+A bilingual (English/Arabic) team workspace for organizing projects, jobs, tasks, follow-ups, and assignments.
 
 **Demo URL: [retzed.github.io/Team_Follow-Up](https://retzed.github.io/Team_Follow-Up/)** · [Project guide](PROJECT_GUIDE.md) · [Application architecture](docs/ARCHITECTURE.md) · [Complete application documentation](docs/DOCUMENTATION.md)
 
