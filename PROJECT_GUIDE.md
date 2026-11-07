@@ -58,7 +58,7 @@ A project/job cannot be created as a child. The UI dynamically displays the appl
 <img width="610" height="480" alt="Untitled Map" src="https://github.com/user-attachments/assets/a2f743cc-bfbc-444f-9fee-f5efdb8448d0" />
 
 
-Every item can hold a name, description, creator metadata, assignee, and priority. Projects and Jobs, plus Tasks, also support status and optional due dates; Follow-ups have neither status nor due date. Task-to-Follow-up conversion removes both fields, while conversion back to Task initializes status to Not Started and due date to blank. Status filters and Not Completed metrics exclude Follow-ups. Updating supported fields produces activity-history entries. Priority can be raised to the maximum using the important/star control. Deleted items go to the archive and may be restored when the required hierarchy is available.
+Every item can hold a name, description, creator metadata, assignee, and priority. Projects and Jobs, plus Tasks, also support status and optional due dates; Follow-ups have neither status nor due date. Task-to-Follow-up conversion removes both fields, while conversion back to Task restores the status and due-date controls and initializes status to Not Started with no due date. Selecting Follow-up hides status filters and removes Due date from its date-sort options; switching back to Task restores the status filter. Status filters and Not Completed metrics exclude Follow-ups. Updating supported fields produces activity-history entries. Priority can be raised to the maximum using the important/star control. Deleted items go to the archive and may be restored when the required hierarchy is available.
 
 ## 3. Application architecture
 
