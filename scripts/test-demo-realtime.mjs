@@ -131,6 +131,7 @@ function createHandlerContext(userId, loading = false, resolvedItems = [], activ
     ui,
     data,
     lastApiSnapshot: { parents: data.parents.map(row => ({ ...row })), children: [], activity: [] },
+    dataLoadState: { parentsReady: true, childrenLoaded: new Set(['project-1']), activityLoaded: new Set() },
     recentlyArchivedItemIds: new Set(),
     isActiveItem: item => Boolean(item && !item.deletedAt && !item.archivedAt && !item.archiveId),
     applicationHistoryCacheInvalidated: false,
