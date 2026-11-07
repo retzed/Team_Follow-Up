@@ -5017,7 +5017,7 @@ let demoAssignedRefreshPending=false,demoPinnedRefreshPending=false;
 const recentlyArchivedItemIds=new Set();let accountItemsRequestGeneration=0;
 function isActiveItem(item){
  const id=String(item?.id||item?.itemId||'');
- return !!id&&!recentlyArchivedItemIds.has(id)&&!item?.deletedAt&&!item?.archivedAt&&!item?.isArchived;
+ return !!id&&!recentlyArchivedItemIds.has(id)&&!item?.deletedAt&&!item?.deleted&&!item?.isDeleted&&!item?.archivedAt&&!item?.archived&&!item?.isArchived&&!item?.archiveId;
 }
 async function resolveActiveAccountItems(rows,api,hydration){
  const candidates=(rows||[]).filter(isActiveItem);
@@ -5966,6 +5966,9 @@ function deleteItem(id){
  const doomedItems=item.type==='followup'?[item]:[item,...allDescendants(id)];const doomed=new Set(doomedItems.map(x=>String(x.id)));if(isRoot||item.type==='task'){const knownRows=[...(data.parents||[]),...(data.children||[]),...[...(assignedItemCache?.values?.()||[])],...(ui.accountAssignedRows||[]),...(ui.accountPinnedRows||[])];let changed=true;while(changed){changed=false;for(const row of knownRows){const rowId=String(row?.id||row?.itemId||'');const parentKey=String(row?.parentId||'');const rowRoot=String(row?.rootParentId||'');if(!rowId||doomed.has(rowId))continue;if(doomed.has(parentKey)||(isRoot&&rowRoot===String(id))){doomed.add(rowId);doomedItems.push(row);changed=true;}}}}for(const doomedId of doomed)recentlyArchivedItemIds.add(doomedId);const deletedAt=nowISO();
  ui.accountAssignedRows=(ui.accountAssignedRows||[]).filter(row=>!doomed.has(String(row.id||row.itemId||''))&&isActiveItem(row));
  ui.accountPinnedRows=(ui.accountPinnedRows||[]).filter(row=>!doomed.has(String(row.id||row.itemId||''))&&isActiveItem(row));
+ // Force a fresh authoritative account-view read after the archive transaction;
+ // the local removal above prevents stale cards while the view is reloaded.
+ ui.accountAssignedLoaded=false;ui.accountPinnedLoaded=false;
  for(const doomedId of doomed)assignedItemCache.delete(doomedId);
  const pinnedUser=rawCurrentUser();let pinsWrite=Promise.resolve();
  const existingPins=(pinnedUser?.pinnedItemIds||[]).map(String);
@@ -9234,19 +9237,17 @@ body.signin-open .scroll-to-top {
   overflow-wrap:anywhere!important;
 }
 
-/* Author CSS can otherwise override the browser's [hidden] display rule. */
+/* Keep type-inapplicable search filters visible; only dim and disable them. */
 #modalRoot #formStatusField[hidden],
-#modalRoot #formDueDateField[hidden],
-#mainContent #childStatusFilterField[hidden],
-#accountPage .account-assigned-controls .account-search-status-field[hidden]{
+#modalRoot #formDueDateField[hidden]{
   display:none!important;
 }
 
-/* Reclaim the Status filter's grid slot when Follow-up is the selected type. */
+/* Preserve the Status filter's grid slot when Follow-up is selected. */
 #accountPage .account-assigned-controls.followup-filter-mode{
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
   grid-template-areas:
-    "query query type type"
+    "query query type status"
     "priority dateMode dateRange dateRange"
     ". . . clear"!important;
 }
@@ -9255,7 +9256,7 @@ body.signin-open .scroll-to-top {
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     grid-template-areas:
       "query query"
-      "type type"
+      "type status"
       "priority dateMode"
       "dateRange dateRange"
       "clear clear"!important;
