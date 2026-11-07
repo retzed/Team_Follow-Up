@@ -162,7 +162,7 @@ function createHandlerContext(userId, loading = false, resolvedItems = [], activ
     Promise, Set, Map, String, Array
   };
   vm.runInNewContext(
-    'let demoAssignedRefreshPending=false;' + String.fromCharCode(10) + handlerSource + String.fromCharCode(10) +
+    'let demoAssignedRefreshPending=false;let dataLoadState={parentsReady:true,childrenLoaded:new Set([\"project-1\"]),activityLoaded:new Set()};' + String.fromCharCode(10) + handlerSource + String.fromCharCode(10) +
     'this.handleDemoRealtimeChange=handleDemoRealtimeChange;' +
     'this.queueDemoRealtimeChange=queueDemoRealtimeChange;' +
     'this.hasPendingAssignedRefresh=()=>demoAssignedRefreshPending;',
