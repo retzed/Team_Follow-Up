@@ -5155,7 +5155,7 @@ async function handleDemoRealtimeChange(change){
  // a delete notification must never leave a stale Assigned or Pinned card behind.
  ui.accountAssignedRows=(ui.accountAssignedRows||[]).filter(isActiveItem);
  ui.accountPinnedRows=(ui.accountPinnedRows||[]).filter(isActiveItem);
- if(ui.page==='account'&&ui.accountTab==='assigned')refreshAccountAssignedResults();
+ if(ui.page==='account'&&ui.accountTab==='assigned'&&typeof refreshAccountAssignedResults==='function')refreshAccountAssignedResults();
  if(ui.page==='account'&&ui.accountTab==='pinned')renderAccountPage();
  const activityItemIds=[...itemIds];
  const activityRows=[];
