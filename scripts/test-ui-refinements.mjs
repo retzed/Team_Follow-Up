@@ -387,6 +387,12 @@ assert.ok(html.includes('window.scrollY+rect.top-headerBottom-12'),
 assert.ok(html.includes('alignWorkspaceItemInViewport(selectedTarget)') &&
   html.includes("alignWorkspaceItemInViewport(document.querySelector('#mainContent .detail-banner'))"),
   'Parent, assigned, and pinned destinations must use the same item-aware navigation.');
+const parentJumpStart=html.indexOf("case 'select-parent':");
+const parentJumpEnd=html.indexOf("case 'select-assigned':",parentJumpStart);
+assert.ok(parentJumpStart>=0&&parentJumpEnd>parentJumpStart &&
+  html.slice(parentJumpStart,parentJumpEnd).includes("ensureRootChildrenLoaded(id).then(()=>{") &&
+  html.slice(parentJumpStart,parentJumpEnd).includes("renderDetail();alignWorkspaceItemInViewport(document.querySelector('#mainContent .detail-banner'));"),
+  'Selecting a Project or Job from either the account or workspace must jump to its detail card after its hierarchy loads.');
 assert.ok(html.includes('workspace-jump-highlight') &&
   html.includes('consistent-card-hover-and-jump-highlight') &&
   html.includes(':hover{') ,
