@@ -410,15 +410,16 @@ assert.ok(mobileJumpStart>alignHelperStart && mobileJumpEnd>mobileJumpStart &&
   mobileJumpLogic.includes("window.scrollTo({top,left:0,behavior:'smooth'})") &&
   !mobileJumpLogic.includes('activeTarget.scrollIntoView('),
   'Mobile redirects explicitly position the target in the real scroll container or document viewport below the sticky header.');
-assert.ok(html.includes("alignWorkspaceItemInViewport(selectedTarget,isRootItem?'':selectedItemId,{alignToTop:isRootItem,highlight:item.type!=='project'})") &&
-  html.includes("const rootTarget=document.querySelector('#mainContent .detail-card')||document.querySelector('#mainContent .detail-banner');alignWorkspaceItemInViewport(rootTarget,'',{alignToTop:parent.type==='job'||parent.type==='project',highlight:parent.type!=='project'})"),
-  'Parent, assigned, and pinned destinations must use the same item-aware navigation.');
+assert.ok(html.includes("if(isRootItem)alignWorkspaceParentInViewport(selectedRootId,{highlight:item.type!=='project'})") &&
+  html.includes("alignWorkspaceItemInViewport(selectedTarget,selectedItemId,{highlight:item.type!=='project'})") &&
+  html.includes("alignWorkspaceParentInViewport(selectedId,{highlight:parent.type!=='project'})"),
+  'Root Project/Job destinations use exact-parent top alignment while child-item destinations retain item-aware alignment.');
 const parentJumpStart=html.indexOf("case 'select-parent':");
 const parentJumpEnd=html.indexOf("case 'select-assigned':",parentJumpStart);
 assert.ok(parentJumpStart>=0&&parentJumpEnd>parentJumpStart &&
   html.slice(parentJumpStart,parentJumpEnd).includes("ensureRootChildrenLoaded(id).then(()=>{") &&
-  html.slice(parentJumpStart,parentJumpEnd).includes("renderDetail();const rootTarget=document.querySelector('#mainContent .detail-card')||document.querySelector('#mainContent .detail-banner');alignWorkspaceItemInViewport(rootTarget,'',{alignToTop:parent.type==='job'||parent.type==='project',highlight:parent.type!=='project'});"),
-  'Selecting a Project or Job from either the account or workspace must jump to its detail card after its hierarchy loads.');
+  html.slice(parentJumpStart,parentJumpEnd).includes("alignWorkspaceParentInViewport(selectedId,{highlight:parent.type!=='project'})"),
+  'Selecting a Project or Job from the workspace list must top-align its exact detail card after its hierarchy loads.');
 assert.ok(html.includes('id="newParentMobile" class="btn btn-primary mobile-new-parent-button"') &&
   html.indexOf('id="newParentMobile"')<html.indexOf('id="mobileSearchToggle"') &&
   html.includes("$('#newParentMobile').addEventListener('click',openNewParent);") &&
