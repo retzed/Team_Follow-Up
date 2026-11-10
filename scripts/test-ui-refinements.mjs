@@ -773,3 +773,31 @@ assert.ok(finalLayoutFix.includes('.topbar>.brand .brand-copy strong{') &&
   finalLayoutFix.includes('overflow:visible!important;text-overflow:clip!important'),
   'The mobile app wordmark keeps its full width and is not clipped by the centered WORKSPACE/USERSPACE label.');
 
+const parentDetailMarkupStart=html.indexOf('function renderDetail(){');
+const parentDetailMarkupEnd=html.indexOf('\\n\\nconst ACCOUNT_ICONS',parentDetailMarkupStart);
+assert.ok(parentDetailMarkupStart>=0&&parentDetailMarkupEnd>parentDetailMarkupStart,'The workspace parent detail renderer must exist.');
+assert.ok(html.slice(parentDetailMarkupStart,parentDetailMarkupEnd).includes('class="detail-card" data-parent-id="${esc(parent.id)}"'),'Every rendered Project or Job detail card must carry its exact parent ID.');
+
+const parentAlignStart=html.indexOf('function alignWorkspaceParentInViewport(parentId,');
+const parentAlignEnd=html.indexOf('function typeIcon(type)',parentAlignStart);
+assert.ok(parentAlignStart>=0&&parentAlignEnd>parentAlignStart,'The exact-parent top aligner must exist.');
+const parentAlignSource=html.slice(parentAlignStart,parentAlignEnd);
+assert.ok(parentAlignSource.includes('findWorkspaceParentCard(wanted)')&&parentAlignSource.includes('ui.selectedParentId')&&parentAlignSource.includes('alignmentPasses<4'),'Parent alignment must resolve the selected parent after rendering and repeat across paint frames.');
+assert.ok(parentAlignSource.includes('scrollContainer.scrollTop=nextTop')&&parentAlignSource.includes('window.scrollTo(0,nextTop)'),'Parent alignment must top-align both nested scroll containers and the document viewport.');
+
+const parentSelectionStart=html.indexOf("case 'select-parent':");
+const assignedSelectionStart=html.indexOf("case 'select-assigned':",parentSelectionStart);
+const archiveSelectionStart=html.indexOf("case 'open-archive':",assignedSelectionStart);
+assert.ok(parentSelectionStart>=0&&assignedSelectionStart>parentSelectionStart&&archiveSelectionStart>assignedSelectionStart,'Both workspace navigation branches must exist.');
+const parentSelectionSource=html.slice(parentSelectionStart,assignedSelectionStart);
+const assignedSelectionSource=html.slice(assignedSelectionStart,archiveSelectionStart);
+assert.ok(parentSelectionSource.includes('alignWorkspaceParentInViewport(selectedId'),'Selecting a Project or Job from the workspace list must use exact-parent top alignment.');
+assert.ok(assignedSelectionSource.includes('if(isRootItem)alignWorkspaceParentInViewport(selectedRootId'),'Redirecting to a root Project or Job from the profile must use the same exact-parent top alignment.');
+
+const mobileHistoryFixStart=html.indexOf('<style id="mobile-workspace-parent-scroll-and-history-header-fix">');
+const mobileHistoryFixEnd=html.indexOf('</style>',mobileHistoryFixStart);
+assert.ok(mobileHistoryFixStart>=0&&mobileHistoryFixEnd>mobileHistoryFixStart,'The mobile activity-header layout override must exist.');
+const mobileHistoryFix=html.slice(mobileHistoryFixStart,mobileHistoryFixEnd);
+assert.ok(mobileHistoryFix.includes('grid-template-columns:minmax(0,1.2fr) minmax(88px,.8fr)')&&mobileHistoryFix.includes('grid-column:1!important')&&mobileHistoryFix.includes('grid-column:2!important'),'Mobile activity cards must keep time/date and user identity together in the first row.');
+assert.ok(mobileHistoryFix.includes('white-space:normal!important')&&mobileHistoryFix.includes('overflow-wrap:anywhere!important'),'Long user names must wrap within the first-row user column instead of forcing the entire user block onto another row.');
+assert.ok(mobileHistoryFix.includes('margin:10px 12px 10px!important')&&mobileHistoryFix.includes('.mobile-search-toggle:not([hidden]){margin-top:0!important}'),'The mobile New Project/Job button must leave a defined small gap before the Find a project or job disclosure.');
