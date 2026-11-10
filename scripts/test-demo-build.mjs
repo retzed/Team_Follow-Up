@@ -71,6 +71,12 @@ assert.equal(config.cognito.userPoolClientId, '', 'public demo must not contain 
 assert.ok(html.includes('team-follow-up-local-auth-v2'), 'built demo includes the current browser-wide local demo session flow');
 assert.ok(!html.includes('team-follow-up-local-auth-v1'), 'built demo excludes the retired local demo session implementation');
 assert.equal(await readFile('dist/.nojekyll', 'utf8'), '', 'static artifact contains .nojekyll');
+const deployedFontPaths = [...html.matchAll(/src:url\(["']?(\.\/assets\/fonts\/[^"')]+\.woff2)/g)].map(match => match[1]);
+assert.ok(deployedFontPaths.length > 0, 'built HTML declares locally bundled WOFF2 fonts');
+for (const fontPath of deployedFontPaths) {
+  const fontData = await readFile('dist/' + fontPath.replace(/^\.\//, ''));
+  assert.equal(fontData.subarray(0, 4).toString('ascii'), 'wOF2', `published font asset is present and is a WOFF2 file: ${fontPath}`);
+}
 const embeddedSvgImages = html.split('data:image/svg+xml;base64,').slice(1)
   .map(encoded => Buffer.from(encoded.slice(0, encoded.indexOf('"')), 'base64').toString('utf8'));
 const deployedLogo = embeddedSvgImages.find(svg => svg.includes('viewBox="0 0 512 420"'));
