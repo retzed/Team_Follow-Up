@@ -395,7 +395,7 @@ assert.ok(html.includes("function alignWorkspaceItemInViewport(target,itemId='',
   'Item jumps must center the target in the usable desktop viewport.');
 assert.ok(html.includes('const delta=alignToTop?rect.top-(usableTop+12):targetCenter-viewportCenter;') &&
   html.includes('if(desktop&&!alignToTop){') &&
-  html.includes("alignToTop:isRootItem,highlight:item.type!=='project'"),
+  html.includes("if(isRootItem)alignWorkspaceParentInViewport(selectedRootId,{highlight:item.type!=='project'})"),
   'Job root redirects align the actual detail-card start below the header; ordinary item jumps retain desktop centering.');
 const alignHelperStart=html.indexOf("function alignWorkspaceItemInViewport(target,itemId='',{alignToTop=false,highlight=true}={}){");
 const mobileJumpStart=html.indexOf("if(!desktop){",alignHelperStart);
@@ -774,7 +774,7 @@ assert.ok(finalLayoutFix.includes('.topbar>.brand .brand-copy strong{') &&
   'The mobile app wordmark keeps its full width and is not clipped by the centered WORKSPACE/USERSPACE label.');
 
 const parentDetailMarkupStart=html.indexOf('function renderDetail(){');
-const parentDetailMarkupEnd=html.indexOf('\\n\\nconst ACCOUNT_ICONS',parentDetailMarkupStart);
+const parentDetailMarkupEnd=html.indexOf('\n\nconst ACCOUNT_ICONS',parentDetailMarkupStart);
 assert.ok(parentDetailMarkupStart>=0&&parentDetailMarkupEnd>parentDetailMarkupStart,'The workspace parent detail renderer must exist.');
 assert.ok(html.slice(parentDetailMarkupStart,parentDetailMarkupEnd).includes('class="detail-card" data-parent-id="${esc(parent.id)}"'),'Every rendered Project or Job detail card must carry its exact parent ID.');
 
