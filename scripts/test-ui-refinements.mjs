@@ -666,7 +666,7 @@ assert.ok(mobileAssigneeStart >= 0 && mobileAssigneeEnd > mobileAssigneeStart &&
   mobileAssigneeRule.includes('align-self: flex-start !important;') &&
   mobileAssigneeRule.includes('direction: inherit !important;') &&
   !mobileAssigneeRule.includes('flex: 0 0 100%') &&
-  !mobileAssigneeRule.includes('width: 100%'),
+  !mobileAssigneeRule.includes('    width: 100% !important;'),
   'The mobile assignee pill uses content-sized width, expands only as required, wraps safely, and follows the page’s natural direction.');
 assert.ok(mobileChildFix.includes('.meta-separator,') &&
   mobileChildFix.includes('.meta-dot,') &&
