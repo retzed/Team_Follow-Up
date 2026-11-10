@@ -659,9 +659,10 @@ assert.ok(html.includes('<span class="timeline-user">') &&
   'Recent activity groups the avatar and username so the shared separator spacing remains precise.');
 assert.ok(html.includes("function alignWorkspaceItemInViewport(target,itemId='',{alignToTop=false,highlight=true}={}){") &&
   html.includes('if(highlight)highlightWorkspaceCard(activeTarget);') &&
-  html.includes("alignToTop:parent.type==='job'||parent.type==='project',highlight:parent.type!=='project'") &&
-  html.includes("alignToTop:isRootItem,highlight:item.type!=='project'"),
-  'Project and Job roots align at the top from workspace and Profile redirects, while a Project root itself is not highlighted.');
+  html.includes("function alignWorkspaceParentInViewport(parentId,{highlight=false}={})") &&
+  html.includes("alignWorkspaceParentInViewport(selectedId,{highlight:parent.type!=='project'})") &&
+  html.includes("if(isRootItem)alignWorkspaceParentInViewport(selectedRootId,{highlight:item.type!=='project'})"),
+  'Project and Job roots use exact-parent top alignment from workspace and Profile redirects, while a Project root itself is not highlighted.');
 
 const finalLayoutFixStart=html.indexOf('<style id="final-header-metadata-and-hierarchy-layout-fix">');
 const finalLayoutFixEnd=html.indexOf('</style>',finalLayoutFixStart);
