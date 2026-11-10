@@ -400,7 +400,7 @@ assert.ok(html.includes('const delta=alignToTop||!desktop?rect.top-(usableTop+12
 assert.ok(html.includes('window.scrollY+rect.top-headerBottom-12'),
   'Mobile item jumps must preserve top alignment below the fixed header.');
 assert.ok(html.includes("alignWorkspaceItemInViewport(selectedTarget,isRootItem?'':selectedItemId,{alignToTop:isRootItem&&item.type==='job'})") &&
-  html.includes("alignWorkspaceItemInViewport(document.querySelector('#mainContent .detail-banner'))"),
+  html.includes("const rootTarget=document.querySelector('#mainContent .detail-card')||document.querySelector('#mainContent .detail-banner');alignWorkspaceItemInViewport(rootTarget,'',{alignToTop:parent.type==='job'})"),
   'Parent, assigned, and pinned destinations must use the same item-aware navigation.');
 const parentJumpStart=html.indexOf("case 'select-parent':");
 const parentJumpEnd=html.indexOf("case 'select-assigned':",parentJumpStart);
