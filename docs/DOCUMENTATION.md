@@ -57,7 +57,7 @@ Projects and Jobs are top-level work containers. They cannot be created as child
 | Task | Project | Follow-ups |
 | Follow-up | Project, Job, or Task | None |
 
-The client enforces these rules to guide the user and avoid invalid forms. The local's checks run entirely in the browser and are not a security boundary.
+The client enforces these rules to guide the user and avoid invalid forms. These checks run entirely in the browser; they are not a security boundary and are not a security boundary.
 
 ### Global item-name uniqueness
 
