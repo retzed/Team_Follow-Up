@@ -6,7 +6,7 @@ This guide explains how to open Follow-Up, run it locally, understand its archit
 
 The target local URL is **https://retzed.github.io/Team_Follow-Up/**. It becomes available after completing the one-time GitHub Pages setup in Section 7. Until Pages is enabled, run the project locally as described in Section 5.
 
-The public site is for evaluation and presentation. Do not enter real personal, confidential, or company-sensitive information.
+The public site uses browser-local storage and client-side account selection. Do not enter real personal, confidential, or company-sensitive information.
 
 ### Built-in team accounts
 
@@ -42,7 +42,7 @@ The workspace-level **Search** sidebar is collapsed by default, including when e
 - Data is shared between team usernames **within the same browser profile and site origin** because they are viewing the same local workspace.
 - Different browsers, devices, profiles, and private/incognito windows have separate copies. There is no cloud synchronization.
 - The current login is stored in the active tab's session storage, so it normally remains through refreshes in that tab but is not a persistent real identity.
-- Use **Reset local data** to restore the starter workspace in the current browser.
+- Use **Reset workspace data** to restore the starter workspace in the current browser.
 
 ## 2. Product concepts and hierarchy
 
@@ -128,7 +128,7 @@ You can double-click `index.html` to try it. A local HTTP server is recommended 
 
 ## 6. Run tests and build the local
 
-Install Node.js 20+ to run the test/build scripts. No third-party NPM packages are required at this time.
+Install Node.js 24+ to run the test/build scripts. No third-party NPM packages are required at this time.
 
 From the project root:
 
@@ -232,7 +232,7 @@ This is a browser-local application, not a shared, server-backed workspace.
 
 **My work disappeared on another device.** That is expected: data is scoped to this browser profile. Data is scoped to browser storage for this site origin.
 
-**I want a clean sample workspace.** Use **Reset local data**. It resets this browser's local copy only.
+**I want a clean sample workspace.** Use **Reset workspace data**. It resets this browser's local copy only.
 
 **A test fails after a UI change.** Read the assertion message in terminal output. Find the related test in `scripts/`, verify the intended behavior, and update the test only if requirements intentionally changed.
 
