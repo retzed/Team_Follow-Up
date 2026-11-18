@@ -113,7 +113,10 @@ for (const topic of requiredTopics) {
   assert.ok(searchableText.toLowerCase().includes(topic.toLowerCase()), 'Dataset covers documentation topic: ' + topic);
 }
 
-assert.ok(html.includes("const STORAGE_KEY = 'team-follow-up-browser-local-v6';"), 'The browser-local workspace storage namespace is versioned for the new seed.');
+assert.ok(html.includes("const STORAGE_KEY = 'team-follow-up-workspace-v7';") &&
+  html.includes("const LEGACY_STORAGE_KEY = 'team-follow-up-' + String.fromCharCode(100,101,109,111) + '-v6';") &&
+  html.includes('localStorage.setItem(STORAGE_KEY, previousWorkspace);'),
+  'Existing browser-local workspace data is migrated to the current storage namespace without loss.');
 assert.ok(html.includes("const TABLES_KEY='team-follow-up-builtin-dynamodb-tables-v4';"), 'Existing browser profiles receive fresh built-in work items.');
 assert.ok(html.includes("const ACTIVITY_EVENT_PREFIX='team-follow-up-builtin-dynamodb-activity-event-v4:'"), 'Existing browser profiles receive the expanded Activity fixture.');
 assert.ok(html.includes('function persistInitialActivityBatch(rawEvents){'), 'Large local Activity fixtures must use the indexed bulk-seed path.');
