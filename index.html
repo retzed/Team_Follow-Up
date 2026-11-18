@@ -6827,7 +6827,7 @@ async function startWorkspaceHydration(){
 }
 // Start with the current cached workspace in built-in mode; API mode progressively populates the UI.
 if(!dataLoadState.active&&data.parents.length&&!data.parents.some(p=>String(p.id)===String(ui.selectedParentId)))ui.selectedParentId=defaultWorkspaceParentId(data.parents);
-window.__TEAM_FOLLOW_UP_local_REALTIME_UNSUBSCRIBE=window.TeamFollowUpDataApi?.mode==='api'?null:window.TeamFollowUpDataApi?.subscribeRealtimeChanges?.(change=>{void queueLocalRealtimeChange(change);});
+window.__TEAM_FOLLOW_UP_LOCAL_REALTIME_UNSUBSCRIBE=window.TeamFollowUpDataApi?.mode==='api'?null:window.TeamFollowUpDataApi?.subscribeRealtimeChanges?.(change=>{void queueLocalRealtimeChange(change);});
 setSignInState(Boolean(sessionUserIdAtLoad));
 render();
 window.__TEAM_FOLLOW_UP_APP_AUTH_CHANGED=(context)=>{if(!context)return;ui.actingUserId=context.teamUserId;resetPageScrollPositions();ui.page='account';ui.accountTab='assigned';ui.accountLoading=true;ui.accountAssignedLoaded=false;ui.accountPinnedLoaded=false;ui.accountAssignedRows=[];ui.accountPinnedRows=[];render();if(dataLoadState.active)void startWorkspaceHydration();};
