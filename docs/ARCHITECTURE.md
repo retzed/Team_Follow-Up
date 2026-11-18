@@ -2,18 +2,18 @@
 
 ## Scope and system boundary
 
-This repository is the **browser-local demonstration** of Follow-Up. It is a static site: GitHub Pages serves the HTML artifact, and application state lives in the visitor's browser. There is no application server, remote database, or shared multi-user workspace in this build.
+This repository contains the **browser-local version** of Follow-Up. It is a static site: GitHub Pages serves the HTML artifact, and application state lives in the visitor's browser. There is no application server, remote database, or shared multi-user workspace in this build.
 
-The production-oriented AWS implementation is maintained separately in the [Follow-Up AWS Deployment repository](https://github.com/retzed/Team_Follow-Up_AWS-Deployment). That repository has a Cognito-authenticated API and DynamoDB persistence; its security and deployment topology must not be inferred from this local demo.
+The production-oriented AWS implementation is maintained separately in the [Follow-Up AWS Deployment repository](https://github.com/retzed/Team_Follow-Up_AWS-Deployment). That repository has a Cognito-authenticated API and DynamoDB persistence; its security and deployment topology must not be inferred from this browser-local.
 
 ## System context
 
 ```mermaid
 flowchart TD
-    Visitor[Team member / demo visitor] --> Pages[GitHub Pages static hosting]
+    Visitor[Team member / local visitor] --> Pages[GitHub Pages static hosting]
     Pages --> Browser[Browser runtime]
-    Browser --> SignIn[Local demo sign-in]
-    SignIn --> Context[Active demo teammate]
+    Browser --> SignIn[Browser-local sign-in]
+    SignIn --> Context[Active team account]
     Context --> UI[Follow-Up UI]
     UI --> Adapter[TeamFollowUpDataApi]
     Adapter --> LocalStore[(Browser localStorage)]
@@ -27,12 +27,12 @@ flowchart TD
 
 ## Component responsibilities
 
-The runtime is organized as a small set of script-level components inside `index.html`. This keeps the public demo self-contained and dependency-free while separating responsibilities through named functions and closure-scoped state.
+The runtime is organized as a small set of script-level components inside `index.html`. This keeps the public local self-contained and dependency-free while separating responsibilities through named functions and closure-scoped state.
 
 | Component | Responsibility |
 |---|---|
 | Preference bootstrap | Detects supported browser language and color-scheme preferences before the page paints. Unsupported or indeterminate preferences fall back to English and dark mode. |
-| Runtime configuration | Defines the public demo configuration. The build script replaces this block to force the built-in data mode and local demonstration sign-in. |
+| Runtime configuration | Defines the public local configuration. The build script replaces this block to force the built-in data mode and local browser-local sign-in. |
 | Data-access adapter | Exposes asynchronous methods for bootstrap, users, top-level items, children, assignments, activity, archive, restore, and commits. |
 | Sign-in gate | Reads and writes one browser-profile identity in `localStorage`. Every tab on the same site origin uses that identity, and the browser `storage` event propagates sign-in and sign-out changes to open tabs. Sign-in is illustrative, not a security boundary. |
 | Application controller | Owns current UI state, filtering, selection, rendering, dialogs, translations, activity refresh, and delegated event handlers. |
@@ -43,9 +43,9 @@ The runtime is organized as a small set of script-level components inside `index
 
 The UI calls `window.TeamFollowUpDataApi` instead of treating storage records as the presentation model. Conversion helpers map persisted table-shaped records into the app's simpler item, event, archive, and user objects. Query and write helpers centralize filtering, pagination-like behavior, normalization, index-field maintenance, and activity-event merging.
 
-In demo mode, the adapter stores logical collections in local browser storage. Cross-tab persistence serializes the read/merge/write section with the Web Locks API when available and patches only IDs changed by the current tab into the latest stored snapshot. This avoids stale whole-workspace writes erasing unrelated changes from another tab. Activity events are stored individually rather than rewriting the complete event collection. After persistence, compact same-origin change notifications are sent through `BroadcastChannel`, with the browser `storage` event as fallback. Each tab also checks the compact signal every five seconds and reconciles the complete persisted item delta on missed/coalesced signals and when it returns to the foreground; every affected tab independently refreshes its relevant views, including the previous/new assignee and users assigned to descendants of an updated parent in Assigned Items. This synchronization is limited to tabs sharing the same browser storage context. Index-like attributes emulate the access patterns expected by a future remote adapter; they are **not** DynamoDB tables and do not provide server-side consistency, authorization, or cross-device synchronization.
+In local mode, the adapter stores logical collections in local browser storage. Cross-tab persistence serializes the read/merge/write section with the Web Locks API when available and patches only IDs changed by the current tab into the latest stored snapshot. This avoids stale whole-workspace writes erasing unrelated changes from another tab. Activity events are stored individually rather than rewriting the complete event collection. After persistence, compact same-origin change notifications are sent through `BroadcastChannel`, with the browser `storage` event as fallback. Each tab also checks the compact signal every five seconds and reconciles the complete persisted item delta on missed/coalesced signals and when it returns to the foreground; every affected tab independently refreshes its relevant views, including the previous/new assignee and users assigned to descendants of an updated parent in Assigned Items. This synchronization is limited to tabs sharing the same browser storage context. Index-like attributes emulate the access patterns expected by a future remote adapter; they are **not** DynamoDB tables and do not provide server-side consistency, authorization, or cross-device synchronization.
 
-Item names use one global namespace across Projects, Jobs, Tasks, and Follow-ups. The demo adapter compares Unicode NFKC-normalized, trimmed, whitespace-collapsed, case-insensitive names across both active and archived records.
+Item names use one global namespace across Projects, Jobs, Tasks, and Follow-ups. The local adapter compares Unicode NFKC-normalized, trimmed, whitespace-collapsed, case-insensitive names across both active and archived records.
 
 The UI module remains in one large HTML source file to preserve the simple static distribution model. Its internal responsibilities are separated into script blocks and functions, but the size of the controller and inline styles are a known maintainability trade-off. Any future file-level modularization should be incremental: preserve script execution order, the pre-authentication gate, the build configuration replacement, and the current regression-test contract.
 
@@ -71,7 +71,7 @@ The four logical collections are:
 
 1. **Work items** — active Project, Job, Task, and Follow-up records.
 2. **Activity events** — append-oriented records with item/root context, actor, action, and timestamp.
-3. **User profiles** — built-in demo identities and display-role labels.
+3. **User profiles** — built-in local identities and display-role labels.
 4. **Archive** — deleted item snapshots and hierarchy metadata.
 
 ## Data flow
@@ -79,7 +79,7 @@ The four logical collections are:
 ### Startup
 
 1. The earliest script sets document language, direction, and theme defaults to avoid an incorrect initial layout.
-2. The demo runtime configuration selects the built-in adapter and local demo sign-in.
+2. The local runtime configuration selects the built-in adapter and browser-local sign-in.
 3. The sign-in gate reads the browser-profile identity directly from `localStorage`. A new sign-in is accepted only after the identity is written and read back successfully. The same record is used by every tab in that browser profile; no tab-scoped identity is stored or consulted. The browser `storage` event applies a sign-in or sign-out made in another tab to the current running instance. This does not authenticate a real account.
 4. The adapter loads and normalizes the saved tables, migrates older local schema shapes when needed, and returns a UI snapshot.
 5. The application controller initializes its indexes, selected workspace item, translations, and event handlers, then renders the UI.
@@ -92,7 +92,7 @@ The four logical collections are:
 4. The data-access layer saves the changed logical tables, and the UI refreshes affected lists and timelines.
 5. A page reload reads the latest browser-local state when storage remains available.
 
-The `esc()` helper is the central output-encoding boundary for text interpolated into HTML templates. Plain text should be assigned using `textContent` where markup is not needed. Data-adapter storage failures are caught and logged. The pre-authentication gate is stricter for identity: it does not start the application unless the signed-in demo identity is present in, or can be written to and read back from, persistent `localStorage`.
+The `esc()` helper is the central output-encoding boundary for text interpolated into HTML templates. Plain text should be assigned using `textContent` where markup is not needed. Data-adapter storage failures are caught and logged. The pre-authentication gate is stricter for identity: it does not start the application unless the signed-in local identity is present in, or can be written to and read back from, persistent `localStorage`.
 
 ## Frontend responsiveness and interaction lifecycle
 
@@ -107,30 +107,30 @@ Regression tests cover the event-propagation boundary, cyclic and deep hierarchy
 ## Persistence and isolation
 
 - Workspaces persist in `localStorage` for the site's origin and browser profile.
-- `localStorage` is the only source of the demo identity. The single browser-profile record is shared by every tab on this site origin and persists through page refreshes, tab closure, and browser restarts.
+- `localStorage` is the only source of the local identity. The single browser-profile record is shared by every tab on this site origin and persists through page refreshes, tab closure, and browser restarts.
 - Each tab stores its own page/view snapshot in `sessionStorage`, including selected items, tabs, filters, expanded rows, and scroll position. A hard refresh restores that tab's snapshot; other tabs cannot read or replace it. View state is never written to browser-wide `localStorage`.
 - Signing in or out in one tab updates the shared record. Other open tabs receive the browser `storage` event and switch to the new identity or return to sign-in. There is no tab-specific authentication state.
-- Separate browser profiles and private-browsing contexts have separate website storage and therefore separate demo sessions. Clearing this site's website data removes the identity; clearing only navigation history may not remove site storage, depending on the browser's selected clearing options.
-- Because the demo dataset itself is stored in `localStorage`, browsers that block persistent site storage cannot run this browser-local demo reliably; the sign-in gate stays closed and reports the storage problem rather than allowing a session that will be lost on refresh.
-- Demo usernames share the same workspace when used in the same browser profile because they are views of one local demonstration dataset.
+- Separate browser profiles and private-browsing contexts have separate website storage and therefore separate local sessions. Clearing this site's website data removes the identity; clearing only navigation history may not remove site storage, depending on the browser's selected clearing options.
+- Because the local dataset itself is stored in `localStorage`, browsers that block persistent site storage cannot run this browser-local reliably; the sign-in gate stays closed and reports the storage problem rather than allowing a session that will be lost on refresh.
+- local usernames share the same workspace when used in the same browser profile because they are views of one local browser-local dataset.
 - Other browsers, devices, profiles, and private windows have independent data.
-- Clearing site storage or using **Reset demo data** removes or resets the local demonstration workspace.
+- Clearing site storage or using **Reset local data** removes or resets the browser-local workspace.
 
-These properties are acceptable only for a demo. Browser data can be inspected or changed by the visitor and must never be treated as authoritative or confidential.
+These properties are acceptable only for a local. Browser data can be inspected or changed by the visitor and must never be treated as authoritative or confidential.
 
 ## Security boundaries
 
-- The public build intentionally uses the local demo adapter and does not require a backend endpoint.
-- A username selects a demonstration identity; any non-empty password is accepted. This is **not authentication** and provides no account protection.
+- The public build intentionally uses the browser-local adapter and does not require a backend endpoint.
+- A username selects a browser-local identity; any non-empty password is accepted. This is **not authentication** and provides no account protection.
 - No secrets or production credentials belong in the HTML, runtime configuration, sample data, tests, or GitHub Pages artifact.
 - User-provided names, descriptions, and search terms are untrusted. Keep HTML interpolation escaped and prefer DOM text APIs.
-- The demo's local state and client-side hierarchy checks are usability controls, not security enforcement.
+- The local's local state and client-side hierarchy checks are usability controls, not security enforcement.
 
 For shared team use, the separate AWS implementation places identity and authorization at Cognito/API Gateway and enforces business rules, identity mapping, server-owned keys, and writes in Lambda. DynamoDB holds durable work-item, activity, user-profile, and archive records.
 
 ## Build and delivery
 
-The demo's GitHub Actions workflow runs the Node.js test suite, generates `dist/index.html`, adds `dist/.nojekyll`, and publishes the static artifact through GitHub Pages when a validated commit reaches `main`. The build explicitly resets runtime configuration to the browser-local mode so the public demo cannot accidentally inherit AWS API settings.
+The local's GitHub Actions workflow runs the Node.js test suite, generates `dist/index.html`, adds `dist/.nojekyll`, and publishes the static artifact through GitHub Pages when a validated commit reaches `main`. The build explicitly resets runtime configuration to the browser-local mode so the public local cannot accidentally inherit AWS API settings.
 
 Useful developer commands:
 
@@ -147,7 +147,7 @@ The account hub and workspace share the same item model but intentionally have s
 
 Each Search result presents explicit Open in workspace, Activity history, and pin actions. Selecting a root switches the page state from account to workspace before rendering details. Selecting an assigned/pinned child resolves its root, waits for root hydration, expands its Task ancestor chain from the hydrated hierarchy, then scrolls the selected child into view. The sidebar collapse control must preserve the selected root and selected child; expansion restores the detail view after lazy loading.
 
-Activity remains on-demand instead of being fetched for every account result. Item-history buttons use the existing item/root activity cache and query boundary. In the demo, that cache and all records are browser-local; in the AWS repo, cached GET responses improve performance but the authenticated API and DynamoDB remain authoritative.
+Activity remains on-demand instead of being fetched for every account result. Item-history buttons use the existing item/root activity cache and query boundary. In the local, that cache and all records are browser-local; in the AWS repo, cached GET responses improve performance but the authenticated API and DynamoDB remain authoritative.
 
 For responsive layout, the account Search filter grid switches to two shrink-safe columns at widths up to 820 CSS pixels, with the query spanning the row. Input/select controls have bounded widths, result action buttons wrap, and the same structure must work in both English LTR and Arabic RTL. Inert result cards are not focusable; their explicit buttons provide keyboard access. These frontend changes add no data model, API, or persistence contract.
 
@@ -159,4 +159,4 @@ When the sidebar closes, the frontend clears any not-yet-fired top-level search 
 
 ## Future evolution
 
-The preferred extension point is the data-access interface, not direct storage manipulation in view handlers. A future backend adapter should preserve the same public item/event model and the user-visible hierarchy/activity behavior while moving validation, authorization, concurrency control, auditing, and shared persistence to a trusted server. That transition requires security and integration tests against the server implementation; changing a browser configuration flag alone does not make the demo production-ready.
+The preferred extension point is the data-access interface, not direct storage manipulation in view handlers. A future backend adapter should preserve the same public item/event model and the user-visible hierarchy/activity behavior while moving validation, authorization, concurrency control, auditing, and shared persistence to a trusted server. That transition requires security and integration tests against the server implementation; changing a browser configuration flag alone does not make the local production-ready.
