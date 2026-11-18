@@ -1,4 +1,4 @@
-name: Test and deploy demo
+name: Build and deploy Follow-Up
 
 on:
   push:
@@ -18,31 +18,32 @@ concurrency:
 
 jobs:
   build:
-    name: Test and build static demo
+    name: Validate and build application
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
+          package-manager-cache: false
 
       - name: Run frontend and local data regression tests
         run: npm test
 
-      - name: Build static demo
+      - name: Build static application
         run: npm run build
 
       - name: Upload GitHub Pages artifact
         if: github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
   deploy:
-    name: Deploy demo to GitHub Pages
+    name: Publish Follow-Up to GitHub Pages
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
@@ -54,8 +55,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
-      - name: Publish static demo
+      - name: Publish static application
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
