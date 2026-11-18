@@ -232,7 +232,7 @@ This is a browser-local application, not a shared, server-backed workspace.
 
 **My work disappeared on another device.** That is expected: data is scoped to this browser profile. Data is scoped to browser storage for this site origin.
 
-**I want a clean sample workspace.** Use **Reset workspace data**. It resets this browser's local copy only.
+**I want a starter workspace.** Use **Reset workspace data**. It resets this browser's local copy only.
 
 **A test fails after a UI change.** Read the assertion message in terminal output. Find the related test in `scripts/`, verify the intended behavior, and update the test only if requirements intentionally changed.
 
