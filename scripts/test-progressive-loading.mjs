@@ -103,8 +103,8 @@ check(tabHandlerStart >= 0, 'The dashboard detail-tab handler must exist.');
 const tabHandler = html.slice(tabHandlerStart, tabHandlerStart + 260);
 check(!tabHandler.includes('refreshActivityFor('),
   'Switching to the dashboard Activity tab must not issue an Activity-table request.');
-check(html.includes("if(ui.selectedParentId){void ensureRootChildrenLoaded(ui.selectedParentId);void refreshActivityFor(ui.selectedParentId,'all');}"),
-  'Startup loads Activity for the initially selected parent while preserving scoped loading for every other item.');
+check(html.includes("if(ui.selectedParentId){void ensureRootChildrenLoaded(ui.selectedParentId).then(()=>tryCompletePendingPageScrollRestore(),()=>tryCompletePendingPageScrollRestore());void refreshActivityFor(ui.selectedParentId,'all');}"),
+  'Startup loads Activity for the initially selected parent, retries deferred scroll restoration after root hydration, and preserves scoped loading for every other item.');
 
 const persistStart = html.indexOf('function persist()');
 const persistEnd = html.indexOf('const localizedUserNames', persistStart);
