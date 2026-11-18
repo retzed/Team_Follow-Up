@@ -2,18 +2,18 @@
 
 A bilingual (English/Arabic) team workspace for organizing projects, jobs, tasks, follow-ups, and assignments.
 
-**Demo URL: [retzed.github.io/Team_Follow-Up](https://retzed.github.io/Team_Follow-Up/)** · [Project guide](PROJECT_GUIDE.md) · [Application architecture](docs/ARCHITECTURE.md) · [Complete application documentation](docs/DOCUMENTATION.md)
+**URL: [retzed.github.io/Team_Follow-Up](https://retzed.github.io/Team_Follow-Up/)** · [Project guide](PROJECT_GUIDE.md) · [Application architecture](docs/ARCHITECTURE.md) · [Complete application documentation](docs/DOCUMENTATION.md)
 
-> **Demo only:** this public build uses browser-local demo sign-in and local browser storage. It has no server-side database or real authentication. Do not enter private, personal, or confidential information. Each browser profile has its own copy of the demo data.
+> this public build uses browser-local demo sign-in and local browser storage. It has no server-side database or real authentication. Do not enter private, personal, or confidential information. Each browser profile has its own copy of the demo data.
 
-## Try the demo
+## Try the app
 
-1. Open the [hosted demo application](https://retzed.github.io/Team_Follow-Up/). If the site has not been published for this repository yet, follow the one-time [GitHub Pages setup](PROJECT_GUIDE.md#7-github-pages-publishing).
+1. Open the [hosted application](https://retzed.github.io/Team_Follow-Up/). If the site has not been published for this repository yet, follow the one-time [GitHub Pages setup](PROJECT_GUIDE.md#7-github-pages-publishing).
 2. Enter one of the built-in team usernames below. English and Arabic aliases are supported; use `root` for the protected demo root identity.
-3. The six standard demo users accept any non-empty password until they set one from their account page. The demo `root` login starts with password `root@1234`; root uses a client-side PBKDF2-HMAC-SHA-256 hash record, and changed demo passwords are stored as salted PBKDF2-HMAC-SHA-256 hashes in browser local storage. This remains a client-only simulation, not production authentication.
+3. The six standard demo users accept any non-empty password until they set one from their account page. The `root` login starts with password `root@1234`; root uses a client-side PBKDF2-HMAC-SHA-256 hash record, and changed passwords are stored as salted PBKDF2-HMAC-SHA-256 hashes in browser local storage. This remains a client-only simulation, not production authentication.
 4. Explore the comprehensive AWS deployment runbook built into the workspace: 16 documentation Projects plus a separate optional SAM/CloudFormation Job, a varied set of 3–5 Tasks per Project, 2–4 Follow-ups per Task, 1–4 direct Project checkpoints, and four Activity events per work item.
 
-| Demo teammate | Username (English) | Username (Arabic) | Team label |
+| teammate | Username (English) | Username (Arabic) | Team label |
 |---|---|---|---|
 | Marwa | `Marwa` | `مروة` | Team Leader |
 | Zyad | `Zyad` | `زياد` | AWS Engineer |
@@ -25,10 +25,10 @@ A bilingual (English/Arabic) team workspace for organizing projects, jobs, tasks
 
 The entered username is used only for sign-in; **Display name** is the name shown throughout the app. The account page opens on **Assigned Items** and also provides **Profile**, **Pinned Items**, and **Search** tabs. Profile fields are ordered as Display name, Arabic display name, phone, e-mail, Label, Label (Arabic), and Profile icon; the privilege indicator remains beside the display name at the top, not as an editable profile textbox. Theme and language apply immediately; **Save changes** saves profile fields only. Search filters Projects/Jobs by type, status, creator/updater/owner/assignee user, and inclusive date ranges, with explicit **Open in workspace** and **Activity history** buttons. Assigned/Pinned results also have workspace and history actions. The workspace keeps its own Search sidebar and floating expand/collapse toggle; selection is retained when the sidebar is expanded. At tablet/mobile widths the Search controls use a two-column layout, date controls stay within their columns, and action buttons may wrap. Do not use the demo for real users or real data.
 
-### Where does demo data go?
+### Where does the data go?
 
 - Work items, assignments, archive entries, and activity events are saved in the browser's `localStorage` for this site.
-- The active demo identity is stored once in browser `localStorage`, shared by all tabs in the same browser profile for this site. It survives page refreshes, tab closure, and browser restarts until the site's stored website data is cleared. Signing in or out in one tab updates other open tabs automatically. Separate browser profiles and private sessions keep separate identities.
+- The active identity is stored once in browser `localStorage`, shared by all tabs in the same browser profile for this site. It survives page refreshes, tab closure, and browser restarts until the site's stored website data is cleared. Signing in or out in one tab updates other open tabs automatically. Separate browser profiles and private sessions keep separate identities.
 - The current page, selected items, filters, expanded rows, and scroll position are saved separately in each tab's `sessionStorage`. Refreshing a tab restores that tab's own view; another tab can remain on a different page with different filters. A newly opened tab starts with its own default view.
 - Open tabs/windows using the same browser profile and same site origin receive compact same-origin change signals, so an assignment or item edit in one tab refreshes the affected Assigned Items/workspace views in the other tabs. The demo uses `BroadcastChannel` with a `localStorage` storage-event fallback; it does not send demo data or notifications over the internet.
 - Another browser profile, private window, browser, or device has a separate local workspace and does not receive these demo signals. For cross-device, multi-user real-time delivery, use the separate AWS deployment, which uses authenticated WebSockets and a durable change cursor.
