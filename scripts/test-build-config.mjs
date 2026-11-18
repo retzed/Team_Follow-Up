@@ -57,19 +57,19 @@ assert.ok(!authGate.includes('applicationLogoMarkup()'), 'pre-auth sign-in canno
 
 const marker = 'window.TEAM_FOLLOW_UP_CONFIG = Object.freeze(';
 const markerStart = html.indexOf(marker);
-assert.ok(markerStart >= 0, 'built browser-local must include runtime configuration');
+assert.ok(markerStart >= 0, 'the application build must include runtime configuration');
 const jsonStart = markerStart + marker.length;
 const jsonEnd = html.indexOf(');', jsonStart);
-assert.ok(jsonEnd > jsonStart, 'built browser-local runtime configuration must be complete');
+assert.ok(jsonEnd > jsonStart, 'the application build runtime configuration must be complete');
 const config = JSON.parse(html.slice(jsonStart, jsonEnd));
 
-assert.equal(config.dataMode, 'builtin', 'public browser-local always uses the built-in local data adapter');
-assert.equal(config.localAuth.enabled, true, 'public browser-local enables local browser-local sign-in');
+assert.equal(config.dataMode, 'builtin', 'the public application uses the built-in local data adapter');
+assert.equal(config.localAuth.enabled, true, 'the public application enables local account selection');
 assert.equal(config.apiBaseUrl, '', 'public browser-local must not point to a remote API');
 assert.equal(config.cognito.userPoolId, '', 'public browser-local must not contain a user-pool identifier');
 assert.equal(config.cognito.userPoolClientId, '', 'public browser-local must not contain an app-client identifier');
-assert.ok(html.includes('team-follow-up-local-auth-v2'), 'built browser-local includes the current browser-wide local browser-local session flow');
-assert.ok(!html.includes('team-follow-up-local-auth-v1'), 'built browser-local excludes the retired local browser-local session implementation');
+assert.ok(html.includes('team-follow-up-local-auth-v2'), 'the application includes the current browser-wide local session flow');
+assert.ok(!html.includes('team-follow-up-local-auth-v1'), 'the application excludes the retired local session implementation');
 assert.equal(await readFile('dist/.nojekyll', 'utf8'), '', 'static artifact contains .nojekyll');
 const deployedFontPaths = [...html.matchAll(/src:url\(["']?(\.\/assets\/fonts\/[^"')]+\.woff2)/g)].map(match => match[1]);
 assert.ok(deployedFontPaths.length > 0, 'built HTML declares locally bundled WOFF2 fonts');
@@ -90,7 +90,7 @@ assert.ok(!deployedFavicon.includes('#102e50'), 'embedded favicon no longer uses
 assert.ok(html.includes('href="data:image/png;base64,') && html.includes('href="data:image/x-icon;base64,'), 'static artifact embeds PNG and ICO favicon variants');
 assert.ok(!/(?:src|href)=["'][^"']+[.](?:svg|png|jpe?g|gif|webp|ico)(?:[?#][^"']*)?["']/i.test(html), 'static artifact has no external image-file dependencies');
 
-assert.ok(html.includes('Local sign-in uses built-in team accounts and browser-local storage.'), 'browser-local login explains that authentication is not real');
-assert.ok(!html.includes('REPLACE_WITH_COGNITO_USER_POOL_ID') && !html.includes('REPLACE_WITH_PUBLIC_APP_CLIENT_ID'), 'built browser-local contains no authentication placeholders');
+assert.ok(html.includes('Local sign-in uses built-in team accounts and browser-local storage.'), 'the sign-in notice accurately describes browser-local account selection');
+assert.ok(!html.includes('REPLACE_WITH_COGNITO_USER_POOL_ID') && !html.includes('REPLACE_WITH_PUBLIC_APP_CLIENT_ID'), 'the application contains no authentication placeholders');
 
-console.log('Public browser-local build tests passed: local data mode, browser-local sign-in, no remote API settings, and GitHub Pages artifact structure.');
+console.log('Application build tests passed: local data mode, account selection, no remote API settings, and GitHub Pages artifact structure.');
