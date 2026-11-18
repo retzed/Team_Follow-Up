@@ -499,7 +499,7 @@ assert.ok(handlerSource.includes('api.queryActivityForItems') && handlerSource.i
   'the browser-local reconciles Activity events by changed item IDs rather than waiting for a parent index update');
 assert.ok(handlerSource.includes("renderAfterActivityRefresh(rootId,'all')"),
   'the selected workspace Activity timeline is refreshed when an affected root changes');
-assert.ok(html.includes("new BroadcastChannel('team-follow-up-browser-local-realtime-v1')"),
+assert.ok(html.includes("new BroadcastChannel('team-follow-up-local-realtime-v2')"),
   'same-origin browser-local tabs use BroadcastChannel for prompt update delivery.');
 assert.ok(html.includes("event.key!==REALTIME_SIGNAL_KEY||!event.newValue"),
   'localStorage storage events provide a fallback for browsers without BroadcastChannel.');
