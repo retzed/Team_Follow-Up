@@ -1,6 +1,6 @@
 # Follow-Up — Complete Documentation
 
-This document describes the public Follow-Up application: its browser-local data model, product behavior, development workflow, deployment, and security boundaries. It covers the product behavior, data model, code organization, local execution, regression testing, deployment, and security boundaries.
+This document describes the public Follow-Up application's browser-local data model, product behavior, code organization, local execution, regression checks, deployment, and security boundaries.
 
 - Repository: https://github.com/retzed/Team_Follow-Up
 - Hosted application: https://retzed.github.io/Team_Follow-Up/
@@ -28,11 +28,11 @@ The application includes six selectable team accounts:
 | `u6` | Dina | AWS Engineer | `Dina` / `دينا` |
 | `root` | root | Protected root profile | `root` |
 
-These roles and profiles are browser-local data, not an authorization system. The entered sign-in username selects the identity but is not displayed in normal application UI; **Name** in Profile is the user-facing display name. For each standard local identity, the first non-empty password is accepted once and then stored as a salted PBKDF2-HMAC-SHA-256 hash; subsequent sign-ins verify it. Clearing or editing browser-local storage can reset or bypass this simulation. The protected `root` account starts with `root@1234` and verifies it using PBKDF2-HMAC-SHA-256 (210,000 iterations). Changed local passwords are stored as salted PBKDF2-HMAC-SHA-256 hashes in this browser's local storage. This remains a browser-local only simulation: users control the browser and can inspect/modify local data, so it is not production authentication. The AWS application continues to authenticate and change passwords through Cognito.
+These roles and profiles are browser-local data, not an authorization system. The entered sign-in username selects the identity but is not displayed in normal application UI; **Name** in Profile is the user-facing display name. For each standard local identity, the first non-empty password is accepted once and then stored as a salted PBKDF2-HMAC-SHA-256 hash; subsequent sign-ins verify it. Clearing or editing browser-local storage can reset or bypass this simulation. The protected `root` account starts with `root@1234` and verifies it using PBKDF2-HMAC-SHA-256 (210,000 iterations). Changed local passwords are stored as salted PBKDF2-HMAC-SHA-256 hashes in this browser's local storage. Account selection and password checks remain client-side; users control the browser and can inspect or modify local data, so this is not production authentication. The AWS application continues to authenticate and change passwords through Cognito.
 
 ### Account page
 
-The application opens on **My Account → Assigned Items**. Account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. Profile personal-detail fields are Display name, optional Arabic display name, phone, e-mail, Label, Label (Arabic), and Profile icon, with the two labels adjacent and Profile icon last. Privilege is shown beside the name in the top area, not as an editable Profile textbox. The icon selector lists icon names and previews the current selection before saving. Theme and language changes apply immediately and persist independently of the Profile **Save changes** button. Password changes use the provider appropriate to the deployment: browser-local password simulation in this local and Cognito in AWS. Pinned items are stored per user.
+The application opens on **My Account → Assigned Items**. Account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. Profile personal-detail fields are Display name, optional Arabic display name, phone, e-mail, Label, Label (Arabic), and Profile icon, with the two labels adjacent and Profile icon last. Privilege is shown beside the name in the top area, not as an editable Profile textbox. The icon selector lists icon names and previews the current selection before saving. Theme and language changes apply immediately and persist independently of the Profile **Save changes** button. Password changes use the provider appropriate to the deployment: browser-local password handling in this edition and Cognito in AWS. Pinned items are stored per user.
 
 ### Main capabilities
 
@@ -76,7 +76,7 @@ Supported statuses for Projects, Jobs, and Tasks are:
 - `on-hold`
 - `completed`
 
-Follow-ups do not have a status field or due-date field. Converting a Task to a Follow-up removes both values; converting back to a Task starts with `not-started` and no due date. Legacy Follow-up values are ignored and removed during browser-local-data normalization or the next server-side update/archive/restore.
+Follow-ups do not have a status field or due-date field. Converting a Task to a Follow-up removes both values; converting back to a Task starts with `not-started` and no due date. Legacy Follow-up values are ignored and removed during browser-local workspace normalization or the next server-side update/archive/restore.
 
 Child items use the priority scale `low`, `medium`, `high`, and `urgent`. The important/star control raises an item to the maximum priority. Status changes are available only on Tasks (and parent Projects/Jobs); Follow-up edits record type/content/assignment/priority changes without status events. Status filters and Not Completed metrics exclude Follow-ups; due-date sorting/filtering also excludes them.
 
@@ -111,7 +111,7 @@ The app persists data in browser storage when available. Browser privacy setting
 | Tool | Requirement | Purpose |
 |---|---|---|
 | Git | Current version | Clone the source repository and manage changes |
-| Node.js and npm | Node.js 20 or newer | Run JavaScript syntax/data/UI tests and build the static artifact |
+| Node.js and npm | Node.js 24 or newer | Run JavaScript syntax/data/UI tests and build the static artifact |
 | Python | Python 3 | Optional local HTTP server |
 | Modern browser | Current version | Manual interaction and responsive-layout validation |
 
@@ -143,7 +143,7 @@ Opening `index.html` directly can work, but the local HTTP server provides more 
 1. Enter one of the six English or Arabic usernames from Section 1.
 2. Enter any non-empty password.
 3. Sign in and explore the current workspace.
-4. Use **Reset local data** to restore the starter dataset in this browser.
+4. Use **Reset workspace data** to restore the starter dataset in this browser.
 
 A login only sets the acting browser-local identity. It does not protect a user account.
 
@@ -182,7 +182,7 @@ The application keeps its public distribution self-contained. Within `index.html
 
 JavaScript functions use descriptive camelCase names; persisted item/status identifiers use stable machine-readable values; reusable conversion, activity, storage, filtering, and rendering helpers reduce duplicated logic. Python code in the separate AWS repository follows snake_case conventions. Keep security-sensitive behavior and storage/API details behind the respective data-access boundaries.
 
-The one-file presentation source is a deliberate static-distribution choice, but its large size is a maintainability trade-off. Future extraction into multiple JavaScript/CSS modules should be staged and should preserve script order, authentication gating, build-time configuration replacement, selectors, and regression coverage.
+The one-file source is a deliberate static-distribution choice, but its large size is a maintainability trade-off. Future extraction into multiple JavaScript/CSS modules should be staged and should preserve script order, authentication gating, build-time configuration replacement, selectors, and regression coverage.
 
 ### Modal actions, hierarchy traversal, and Activity-index behavior
 
@@ -200,7 +200,7 @@ The built-in adapter maintains four logical collections:
 
 - **Work items:** active items, hierarchy references, assignment, status/priority, and timestamps.
 - **Activity events:** event identity, actor, affected item, hierarchy context, action/kind, and time.
-- **User profiles:** six built-in browser-local identities and display-role labels.
+- **User profiles:** six built-in team accounts and display-role labels.
 - **Archive records:** deleted snapshots with archive and parent/root context.
 
 The local adapter emulates common access patterns using derived fields for top-level lists, parent queries, workspace/root views, assignment lists, and timestamp ordering. Those derived keys are for local application behavior and future adapter compatibility; they do not turn browser storage into DynamoDB.
@@ -234,7 +234,7 @@ Build the static artifact:
 npm run build
 ```
 
-The result is `dist/index.html` plus `dist/.nojekyll`. The build script explicitly sets the public local to the built-in local data mode and enables the local browser-local sign-in. It clears Cognito identifiers and the remote API URL so the published local cannot accidentally point at a configured AWS endpoint.
+The result is `dist/index.html` plus `dist/.nojekyll`. The build script selects browser-local data mode and local sign-in, and clears Cognito identifiers and the remote API URL so the published application cannot point at an AWS endpoint.
 
 ### GitHub Pages workflow
 
@@ -244,12 +244,12 @@ The Pages artifact contains the static application, not the full source reposito
 
 ## 9. Security, privacy, and error handling
 
-This repository is a browser-local, **not a production application**.
+The public build stores sign-in state and workspace records in the browser. It is not backed by a shared, server-side workspace.
 
-- The public local is not a security boundary. PBKDF2 protects the representation of locally changed passwords from plain-text storage, but the code and root credential record are shipped to the browser and users can inspect or edit browser-local data.
+- Browser storage and client-side sign-in are not a security boundary. PBKDF2 protects the representation of locally changed passwords from plain-text storage, but the code and root credential record are shipped to the browser and users can inspect or edit browser-local data.
 - The workspace and all client-side code are visible to the visitor.
 - Do not put real credentials, secrets, customer information, employee-sensitive notes, or confidential project data in the local.
-- Keep production keys and real identity mappings out of HTML, sample datasets, configuration, source control, and CI logs.
+- Keep production keys and real identity mappings out of HTML, browser-local workspace records, configuration, source control, and CI logs.
 - Use the central `esc()` helper before interpolating untrusted values into HTML templates. Prefer `textContent` where markup is not required.
 - Continue catching storage/bootstrap/network failures and presenting a useful failure or fallback state without exposing tokens or internal secrets.
 - Client-side hierarchy checks improve usability only; authorization must be enforced server-side in a production deployment.
@@ -265,7 +265,7 @@ The separate AWS repository is the appropriate place to review the production-or
 
 **Changes do not persist after closing the browser.** Check whether site storage is blocked, the browser is in a privacy mode, or the site's data was cleared. The app can fall back to memory when storage fails, in which case changes may not survive.
 
-**The local data looks wrong after a prior test.** Use **Reset local data** to restore the starter dataset for the current browser.
+**The workspace content changed unexpectedly.** Use **Reset workspace data** to restore the starter dataset for the current browser.
 
 **Tests fail.** Run `npm test`, read the first failing assertion, and inspect the associated test in `scripts/` before changing behavior. Add or update a regression test when requirements intentionally change.
 
@@ -282,7 +282,7 @@ The default landing view is **My Account → Assigned Items**. The username cont
 
 The displayed name is a display name, not a login username. The profile editor contains **Display name**, optional **Display name (Arabic)**, **Phone number**, **E-mail**, **Label**, optional **Label (Arabic)**, and **Profile icon** in that order. The Arabic Label text is exactly `Label (Arabic)`; the two label fields are adjacent and Profile icon is the final personal-detail field. The icon selector lists supported icon names and previews the selected icon. The privilege value is not an editable profile field: the privilege indicator remains beside the display name at the top of the page, while authorized team-privilege management remains a separate function. The root profile remains read-only through the profile editor.
 
-**Save changes** persists profile fields. Theme and language are changed and persisted independently. Arabic display-name and label variants are used when Arabic is active and the optional value is non-empty. Password updates follow this edition's local browser-local behavior; they are not production authentication.
+**Save changes** persists profile fields. Theme and language are changed and persisted independently. Arabic display-name and label variants are used when Arabic is active and the optional value is non-empty. Password updates in this edition are stored in the browser and are not production authentication.
 
 ### Account Search behavior
 
@@ -314,4 +314,4 @@ Closing Search clears a queued sidebar query timer and advances the sidebar quer
 
 ### Validation and scope
 
-Regression tests cover the profile field order and label text, removal of the profile privilege input, date and user filter wiring, explicit Search actions, canonical AWS user-ID aliases, mobile filter-grid rules, post-hydration ancestor expansion, and selected-workspace restoration. Both repositories keep the same frontend interaction contract. In this public repository, authentication, user profiles, work items, activity and archive data remain browser-local only local data. Never use the local for real or confidential records.
+Regression tests cover the profile field order and label text, removal of the profile privilege input, date and user filter wiring, explicit Search actions, canonical AWS user-ID aliases, mobile filter-grid rules, post-hydration ancestor expansion, and selected-workspace restoration. Both repositories keep the same frontend interaction contract. In this public repository, sign-in state, profiles, work items, activity, and archive records remain in browser storage. Do not use this browser-local edition for confidential or regulated records.
