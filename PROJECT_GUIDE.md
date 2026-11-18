@@ -1,16 +1,16 @@
 # Project Guide — Follow-Up
 
-This guide explains how to access the demo, run the application, understand its architecture, work on the code, validate changes, and publish the static demo. It describes the current public project as it is today: a self-contained browser app with demo authentication and browser-local persistence. For the full application reference, see [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md).
+This guide explains how to open Follow-Up, run it locally, understand its architecture, work on the code, validate changes, and publish the static site. The public application is a self-contained browser client with local account selection and browser-local persistence. For the full application reference, see [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md).
 
-## 1. Demo URL and access
+## 1. local URL and access
 
-The target demo URL is **https://retzed.github.io/Team_Follow-Up/**. It becomes available after completing the one-time GitHub Pages setup in Section 7. Until Pages is enabled, run the project locally as described in Section 5.
+The target local URL is **https://retzed.github.io/Team_Follow-Up/**. It becomes available after completing the one-time GitHub Pages setup in Section 7. Until Pages is enabled, run the project locally as described in Section 5.
 
 The public site is for evaluation and presentation. Do not enter real personal, confidential, or company-sensitive information.
 
-### Built-in demo users
+### Built-in team accounts
 
-Use one of the six standard usernames (English or Arabic alias), or use `root` for the protected demo root identity. Standard users accept a non-empty password until they set one in the account page; `root` starts with password `root@1234`.
+Use one of the six standard usernames (English or Arabic alias), or use `root` for the protected local root identity. Standard users accept a non-empty password until they set one in the account page; `root` starts with password `root@1234`.
 
 | Team member | English username | Arabic username | User ID | Display label |
 |---|---|---|---|---|
@@ -22,7 +22,7 @@ Use one of the six standard usernames (English or Arabic alias), or use `root` f
 | Dina | `Dina` | `دينا` | `u6` | AWS Engineer |
 | Root | `root` | — | `root` | Protected system administrator |
 
-This is intentionally not production authentication. The root demo password and any changed demo passwords are verified using salted PBKDF2-HMAC-SHA-256 records; the root record uses 210,000 iterations. Standard demo users retain the legacy non-empty-password behavior until they set a password. All records remain within browser-controlled storage, and the public client cannot enforce a trusted security boundary.
+This is intentionally not production authentication. The root account password and any changed local passwords are verified using salted PBKDF2-HMAC-SHA-256 records; the root record uses 210,000 iterations. Standard team accounts retain the legacy non-empty-password behavior until they set a password. All records remain within browser-controlled storage, and the public client cannot enforce a trusted security boundary.
 
 ### Account page and profile behavior
 
@@ -36,13 +36,13 @@ When opening an assigned or pinned child item, the UI switches to the workspace,
 
 The workspace-level **Search** sidebar is collapsed by default, including when entering the workspace from the Account page. Use the floating sidebar control to expand it. Closing invalidates any pending top-level search refresh so an old response cannot re-render the panel after it closes. Reopening retains the selected Project/Job and uses the existing lazy child hydration path. Resizing the browser must not forcibly reopen Search. Its collapsed CSS grid is a single flexible column with the sidebar removed; a zero-width first track would make the main workspace appear blank.
 
-### Demo data lifetime
+### local data lifetime
 
 - Workspaces are saved in local browser storage for this site.
-- Data is shared between demo usernames **within the same browser profile and site origin** because they are viewing the same local workspace.
+- Data is shared between team usernames **within the same browser profile and site origin** because they are viewing the same local workspace.
 - Different browsers, devices, profiles, and private/incognito windows have separate copies. There is no cloud synchronization.
 - The current login is stored in the active tab's session storage, so it normally remains through refreshes in that tab but is not a persistent real identity.
-- Use **Reset demo data** to restore the starter dataset in the current browser.
+- Use **Reset local data** to restore the starter workspace in the current browser.
 
 ## 2. Product concepts and hierarchy
 
@@ -66,7 +66,7 @@ The browser app is currently served as static HTML. The full responsive UI, styl
 
 ```mermaid
 flowchart TD
-    Browser[Browser] --> Login[Demo sign-in / active teammate]
+    Browser[Browser] --> Login[local sign-in / active teammate]
     Login --> UI[Views and UI state]
     UI --> Overview[Project/job overview]
     UI --> ChildItems[Tasks and follow-ups]
@@ -80,7 +80,7 @@ flowchart TD
     LocalStore --> ItemStore[Items and parent/child relationships]
     LocalStore --> ActivityStore[Activity events]
     LocalStore --> ArchiveStore[Archived items]
-    LocalStore --> UserStore[Built-in demo team]
+    LocalStore --> UserStore[Built-in local team]
 ```
 
 ### Main layers
@@ -89,7 +89,7 @@ flowchart TD
 2. **Application logic:** selected item, creation/edit flows, filtering, hierarchy rules, state rendering, archive/restore selection, and activity formatting.
 3. **Data access layer:** the `TeamFollowUpDataAPI` interface exposes asynchronous operations so view logic does not directly manipulate every storage record.
 4. **Local adapter:** the current built-in adapter stores work items, team profiles, archive records, and activity events in `localStorage`. Index-like fields support list, hierarchy, assignment, and history queries.
-5. **Demo session:** browser `localStorage` stores one active demo identity per browser profile and site origin. Tabs on that origin share the identity, and the browser `storage` event synchronizes sign-in and sign-out changes to open tabs. This is demonstration state, not secure authentication.
+5. **local session:** browser `localStorage` stores one active local identity per browser profile and site origin. Tabs on that origin share the identity, and the browser `storage` event synchronizes sign-in and sign-out changes to open tabs. This is browser-local state, not secure authentication.
 
 The public repository intentionally contains no server deployment stack. A future server can implement equivalent operations behind the data access boundary; that implementation should not require the UI to know which host or database is used.
 
@@ -97,9 +97,9 @@ The public repository intentionally contains no server deployment stack. A futur
 
 - `index.html` — complete application and browser-local data adapter.
 - `package.json` — commands for local validation and building a static artifact.
-- `scripts/build.mjs` — creates `dist/index.html` with the public demo settings and `.nojekyll`.
+- `scripts/build.mjs` — creates `dist/index.html` with the public local settings and `.nojekyll`.
 - `scripts/check-syntax.mjs` — parses executable inline JavaScript.
-- `scripts/test-*.mjs` — regression checks for local data operations, history, archive, filtering, language handling, layout, and demo build.
+- `scripts/test-*.mjs` — regression checks for local data operations, history, archive, filtering, language handling, layout, and local build.
 - `docs/ARCHITECTURE.md` — architecture and data flow.
 - `.github/workflows/pages.yml` — tests the app and publishes the static site on pushes to `main`.
 
@@ -126,7 +126,7 @@ Stop the server with `Ctrl+C`.
 
 You can double-click `index.html` to try it. A local HTTP server is recommended because browsers handle storage and origin semantics more predictably on localhost.
 
-## 6. Run tests and build the demo
+## 6. Run tests and build the local
 
 Install Node.js 20+ to run the test/build scripts. No third-party NPM packages are required at this time.
 
@@ -137,7 +137,7 @@ npm test
 npm run build
 ```
 
-The test suite checks JavaScript syntax and key data/UI behavior, including create/edit/status/assignment flows, archive and selective restore, history event integrity, search and bilingual rendering, popup behavior, and public demo configuration.
+The test suite checks JavaScript syntax and key data/UI behavior, including create/edit/status/assignment flows, archive and selective restore, history event integrity, search and bilingual rendering, popup behavior, and public local configuration.
 
 Build output:
 
@@ -159,7 +159,7 @@ The public website is published from `main` by the GitHub Actions workflow in `.
 2. Select **Settings → Pages**.
 3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
 4. Push a commit to `main`, or open **Actions** and run the workflow manually.
-5. Open the newest **Test and deploy demo** run. Wait for both build and deployment jobs to finish successfully.
+5. Open the newest **Build and deploy Follow-Up** run. Wait for both build and deployment jobs to finish successfully.
 6. The first publication may take a short time to become available.
 
 ### Ongoing updates
@@ -177,7 +177,7 @@ If the build succeeds but deployment reports that Pages is not enabled, recheck 
 5. Add or update a regression test for behavior changes.
 6. Run `npm test` and `npm run build`.
 7. Commit and push the branch, open a pull request, check CI, and merge only after the tests pass.
-8. Verify the demo after the merge to `main`.
+8. Verify the local after the merge to `main`.
 
 For large changes to the one-file application, keep modifications targeted and test the affected UI path in a normal browser as well as running the automated suite.
 
@@ -200,7 +200,7 @@ The local adapter maintains four logical collections:
 
 - **Work items:** IDs, type, name/description, parent/root IDs, timestamps, priority, creator and assignee metadata, and index-like sort/search fields. Status and optional due date apply to Projects, Jobs, and Tasks; Follow-ups omit both fields.
 - **Activity events:** affected item, parent/root context, actor, timestamp, action, and fields required to search/filter the timeline.
-- **User profiles:** the six built-in demo identities and display/role metadata.
+- **User profiles:** the six built-in local identities and display/role metadata.
 - **Archive:** deleted work items with hierarchy and archive metadata so restore can validate parent relationships.
 
 Activity events are a first-class history stream. Creation, edits, status changes, assignment changes, archive, and restore actions should retain their history behavior. For bulk/hierarchy operations, avoid misleading duplicate events.
@@ -217,25 +217,25 @@ These collections are local browser structures, not tables in a remote database.
 
 ## 11. Security and scope boundaries
 
-This is a presentation demo, not a production system.
+This is a browser-local application, not a shared, server-backed workspace.
 
-- Sign-in accepts any non-empty password for known demo names. It does not verify identity.
+- Sign-in accepts any non-empty password for configured team usernames. It does not verify identity.
 - Data is readable and editable in the browser and can be reset or modified by the visitor.
 - Do not use real personal data, employee-sensitive notes, customer data, passwords, or secrets.
 - Browser storage is not a database backup and does not synchronize users.
 - No server-side authorization or durable shared backend is included.
-- Keep the public repository focused on the application, generic architecture, tests, and presentation documentation. Hosting/database implementation will be designed separately if shared persistence is needed.
+- Keep the public repository focused on the application, generic architecture, tests, and product documentation. Hosting/database implementation will be designed separately if shared persistence is needed.
 
 ## 12. Troubleshooting
 
 **I cannot sign in.** Use one of the six usernames (English or Arabic) and ensure the password contains at least one character.
 
-**My work disappeared on another device.** That is expected in local demo mode. Data is scoped to browser storage for this site origin.
+**My work disappeared on another device.** That is expected: data is scoped to this browser profile. Data is scoped to browser storage for this site origin.
 
-**I want a clean sample workspace.** Use **Reset demo data**. It resets this browser's local copy only.
+**I want a clean sample workspace.** Use **Reset local data**. It resets this browser's local copy only.
 
 **A test fails after a UI change.** Read the assertion message in terminal output. Find the related test in `scripts/`, verify the intended behavior, and update the test only if requirements intentionally changed.
 
 **The live site did not update.** Check the latest run in the repository's **Actions** tab. Deployment only occurs from `main` after the test/build job succeeds. Confirm Pages is configured to use GitHub Actions.
 
-**I need shared multi-user data.** This is out of scope for the public demo. Introduce a provider-neutral API/service contract first, then implement and test the chosen server/database adapter separately.
+**I need shared multi-user data.** This is out of scope for the public local. Introduce a provider-neutral API/service contract first, then implement and test the chosen server/database adapter separately.
