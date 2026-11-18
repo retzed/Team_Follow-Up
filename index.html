@@ -3239,7 +3239,7 @@ function seedData(){
     ]),
     task('5.5 Verify query patterns, consistency and documented limits','Use the physical schema as the contract for both manual setup and the optional full-stack template.', 'u6','high','not-started',[
      step('Test single-item Activity with Query','Query Activity by itemId and sort by activityKey, newest first. Verify events are de-duplicated by eventId and normalized for UI field names.','u3','not-started'),
-     step('Test application-wide Activity with Scan','The global history endpoint scans the complete small Activity table because no GSI exists. Keep that read on demand and monitor performance as records grow.','u3','not-started'),
+     step('Review application-wide Activity scan','The global history endpoint scans the complete small Activity table because no GSI exists. Keep that read on demand and monitor performance as records grow.','u3','not-started'),
      step('Test archive grouping by root','List Archive and verify children group under their archived Project/Job using archiveRootId even when the root name was captured only in snapshots.','u6','not-started'),
      step('Verify total provisioned capacity','Four base tables at 1 RCU/1 WCU plus five GSIs at 1 RCU/1 WCU totals 9 RCUs and 9 WCUs. Document changes if the live console differs from the target.','u6','not-started')
     ])
