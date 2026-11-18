@@ -216,7 +216,7 @@ assert.ok(html.includes('skipNextSidebarApiRefresh=true;render();\n  if(hydrated
   'The saved API theme must be applied after the initial workspace render.');
 if (html.includes('savedUserTheme=null;')) {
   assert.ok(html.includes('render();\n if(savedUserTheme){ui.theme=savedUserTheme;applyTheme();}'),
-    'The local demo theme must also be applied after its initial render.');
+    'The local browser-local theme must also be applied after its initial render.');
 }
 
 console.log('Theme tests passed: OS preference detection, saved-theme precedence, fast theme-only application, save rollback, and post-render hydration.');
