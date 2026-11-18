@@ -239,17 +239,17 @@ assert.equal(sharedBrowserStorage.getItem('team-follow-up-view-state-v1:u2'), st
 const localAuthStart = html.indexOf("const LOCAL_SESSION_KEY='team-follow-up-local-auth-v2';");
 const localAuthEnd = html.indexOf('\n screen.hidden=false;screen.lang=root.lang;screen.dir=root.dir;', localAuthStart);
 assert.ok(localAuthStart >= 0 && localAuthEnd > localAuthStart,
-  'The demo session implementation is a single extractable helper block.');
+  'The browser-local session implementation is a single extractable helper block.');
 const localAuthSource = html.slice(localAuthStart, localAuthEnd);
 assert.doesNotMatch(localAuthSource, /team-follow-up-local-auth-v1|LEGACY_LOCAL_SESSION_KEY/,
-  'The retired demo-session migration is not shipped.');
+  'The retired browser-local-session migration is not shipped.');
 assert.doesNotMatch(html, /for\(const storage of \[sessionStorage,localStorage\]\)/,
-  'Cognito initialization does not clear demo-session markers from tab-scoped storage.');
+  'Cognito initialization does not clear browser-local-session markers from tab-scoped storage.');
 assert.doesNotMatch(localAuthSource, /sessionStorage|window\.name|history\.state|history\.replaceState|location\.href|__team_follow_up_tab/,
-  'Demo authentication is browser-profile based and does not consult tab-scoped or URL/history state.');
+  'browser-local authentication is browser-profile based and does not consult tab-scoped or URL/history state.');
 assert.ok(localAuthSource.includes('localStorage.setItem(LOCAL_SESSION_KEY,userId)') &&
           localAuthSource.includes('localStorage.getItem(LOCAL_SESSION_KEY)===userId'),
-  'A demo sign-in is persisted and read back from the shared browser-profile store.');
+  'A browser-local sign-in is persisted and read back from the shared browser-profile store.');
 assert.ok(localAuthSource.includes("localStorage.getItem(LOCAL_SESSION_KEY)||''"),
   'Startup restores the browser-wide identity directly from localStorage.');
 assert.ok(localAuthSource.includes('localStorage.removeItem(LOCAL_SESSION_KEY)'),
@@ -261,7 +261,7 @@ assert.ok(html.includes("window.addEventListener('storage',handleLocalSessionSto
 assert.ok(html.includes('finishVisualAuth(makeLocalContext(id,username))'),
   'A browser-wide session change updates an already-running application instance.');
 assert.ok(html.includes("if(cfg.localAuth?.enabled===true&&!hasCognitoConfigurationAttempt()){initializeLocalAuth();return;}"),
-  'The public demo selects local-session restoration before entering the Cognito flow.');
+  'The public browser-local selects local-session restoration before entering the Cognito flow.');
 
 const browserStorage = createMemoryStorage();
 const browserContextA = {
@@ -281,7 +281,7 @@ vm.runInNewContext(localAuthSource + '\nthis.restore=restoreLocalSessionUser;', 
 assert.equal(browserContextB.restore(), 'u2',
   'A separate tab in the same browser profile restores exactly the same browser-wide user.');
 
-// Signing in as a different demo user in any tab changes the one shared identity.
+// Signing in as a different browser-local user in any tab changes the one shared identity.
 assert.equal(browserContextB.persist('u3'), true);
 assert.equal(browserContextA.restore(), 'u3',
   'A sign-in from another tab changes the shared browser-profile identity for every tab.');
