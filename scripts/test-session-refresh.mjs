@@ -55,8 +55,10 @@ assert.doesNotMatch(hydrationHeader, /ui\.page='account';\s*ui\.accountTab='assi
   'Data refresh must not force the user back to Profile > Assigned Items.');
 assert.ok(html.includes("const WORKSPACE_VIEW_STATE_PREFIX='team-follow-up-tab-view-state-v2:';"),
   'The existing tab-scoped namespace remains stable so saved browser-tab selections can migrate without being discarded.');
-assert.ok(html.includes('const state={version:3,userId,page:ui.page,values:{},expanded:[...(ui.expanded||[])].slice(0,1000),scrollY:Math.max(0,Math.round(window.scrollY||0))};'),
-  'New view snapshots use schema v3 while retaining the compatible v2 storage key.');
+assert.ok(html.includes('const state={version:4,userId,page:ui.page,values:{},expanded:[...(ui.expanded||[])].slice(0,1000),') &&
+          html.includes('scrollPositions:{workspace:pageScrollPositions.workspace,account:pageScrollPositions.account}') &&
+          html.includes('scrollY:pageScrollPositions[ui.page]||0};'),
+  'New view snapshots retain the v2 storage key and persist independent page scroll positions.');
 assert.ok(html.includes("if(meta.stage==='complete'){dataLoadState.usersReady=true;dataLoadState.parentsReady=true;dataLoadState.initialComplete=true;if(!ui.selectedParentId&&data.parents.length)ui.selectedParentId=defaultWorkspaceParentId(data.parents);}"),
   'An automatic default is not selected until every top-level bootstrap page has been loaded.');
 assert.ok(html.includes("restoredWorkspaceViewStateVersion<3&&!ui.selectedAssignedItemId&&isLegacyFirstCreatedSelection(ui.selectedParentId,data.parents)"),
@@ -76,8 +78,9 @@ assert.ok(html.includes("if(restoredParentState==='missing'||(!ui.selectedParent
   'Fallback selection is applied only when the exact-ID resolver confirms the saved parent is absent, or when there was no selection.');
 assert.ok(html.includes("else if(ui.accountTab==='pinned'&&!ui.accountPinnedLoaded)void loadAccountPinnedItems();"),
   'A restored Pinned Items page reloads its own data instead of switching tabs.');
-assert.ok(html.includes('restoredWorkspaceScrollY>0') && html.includes('window.scrollTo({top:restoredWorkspaceScrollY'),
-  'The current scroll position is restored after the data refresh.');
+assert.ok(html.includes('restoreInitialPageScrollPosition(restoredWorkspaceScrollY);') &&
+          html.includes('function restoreInitialPageScrollPosition(restoredScrollY=0)'),
+  'Startup restores the active page scroll position, including an explicit zero offset.');
 
 const createMemoryStorage = (initial = []) => {
   const map = new Map(initial);
@@ -106,16 +109,26 @@ function createUi(overrides = {}) {
 }
 function createViewContext(ui, tabStorage, sharedBrowserStorage, scrollY = 0) {
   const listeners = {};
+  const scrollRoot = { scrollTop: scrollY, scrollHeight: 10000 };
+  const documentElement = { scrollTop: scrollY, scrollHeight: 10000 };
+  const body = { scrollTop: scrollY, scrollHeight: 10000 };
   const context = {
     ui, sessionStorage: tabStorage, localStorage: sharedBrowserStorage,
-    window: { scrollY, addEventListener: (name, callback) => { listeners[name] = callback; } },
+    document: { scrollingElement: scrollRoot, documentElement, body },
+    window: { scrollY, pageYOffset: scrollY, innerHeight: 800,
+      addEventListener: (name, callback) => { listeners[name] = callback; } },
     Set, Number, Math, JSON, String, encodeURIComponent, console
   };
   vm.runInNewContext(
-    helperSource + '\nthis.persistWorkspaceViewState=persistWorkspaceViewState;this.clearView=window.__TEAM_FOLLOW_UP_CLEAR_VIEW_STATE;this.restoredWorkspaceScrollY=restoredWorkspaceScrollY;',
+    helperSource + '\nthis.persistWorkspaceViewState=persistWorkspaceViewState;this.clearView=window.__TEAM_FOLLOW_UP_CLEAR_VIEW_STATE;this.restoredWorkspaceScrollY=restoredWorkspaceScrollY;this.pageScrollPositions=pageScrollPositions;pageScrollInitialized=true;',
     context
   );
-  return { ...context, listeners };
+  const setScrollPosition = value => {
+    const top = Number(value) || 0;
+    scrollRoot.scrollTop = documentElement.scrollTop = body.scrollTop = top;
+    context.window.scrollY = context.window.pageYOffset = top;
+  };
+  return { ...context, listeners, setScrollPosition };
 }
 const sharedBrowserStorage = createMemoryStorage();
 // This is the stale shared view written by older releases. It must never be a
@@ -137,8 +150,12 @@ const tabAUi = createUi({
   expanded: new Set(['task-9', 'task-10']), modal: null
 });
 const firstContext = createViewContext(tabAUi, tabAStorage, sharedBrowserStorage, 584);
+firstContext.pageScrollPositions.account = 212;
 firstContext.persistWorkspaceViewState();
 const tabAKey = 'team-follow-up-tab-view-state-v2:u2';
+const firstSavedView = JSON.parse(tabAStorage.getItem(tabAKey));
+assert.deepEqual(firstSavedView.scrollPositions, { workspace: 584, account: 212 },
+  'One saved tab snapshot retains separate WORKSPACE and USERSPACE scroll offsets.');
 assert.ok(tabAStorage.getItem(tabAKey), 'The active view is stored in this tab session. New tab view state uses the v2 namespace.');
 assert.equal(sharedBrowserStorage.getItem(tabAKey), null, 'View state is never written to browser-wide localStorage.');
 assert.equal(sharedBrowserStorage.getItem('team-follow-up-view-state-v1:u2'), staleSharedView,
@@ -186,7 +203,10 @@ assert.equal(refreshedTabAUi.childPriority, 'high');
 assert.equal(refreshedTabAUi.accountTab, 'pinned');
 assert.deepEqual([...refreshedTabAUi.expanded], ['task-9', 'task-10']);
 assert.equal(refreshedTabAUi.modal, null, 'A browser refresh does not reopen an unfinished modal.');
-assert.equal(refreshedTabAContext.restoredWorkspaceScrollY, 584, 'The refreshed tab restores its own scroll position.');
+assert.equal(refreshedTabAContext.restoredWorkspaceScrollY, 584, 'The refreshed tab restores its active page scroll position.');
+assert.equal(refreshedTabAContext.pageScrollPositions.workspace, 584);
+assert.equal(refreshedTabAContext.pageScrollPositions.account, 212,
+  'The other page scroll offset survives refresh without being overwritten.');
 assert.equal(refreshedTabAUi.parentQuery, 'network');
 assert.notEqual(tabBStorage.getItem(tabAKey), null,
   'Tab B retains its separate snapshot while Tab A is refreshed.');
@@ -215,7 +235,13 @@ const legacyTabUi = createUi();
 const legacyTabContext = createViewContext(legacyTabUi, legacyTabStorage, sharedBrowserStorage);
 assert.equal(legacyTabUi.selectedParentId, 'legacy-tab-project');
 assert.equal(legacyTabUi.parentQuery, 'legacy tab only');
+assert.equal(legacyTabContext.restoredWorkspaceScrollY, 246,
+  'A legacy single scroll offset migrates only to its previously active page.');
+legacyTabContext.setScrollPosition(legacyTabContext.restoredWorkspaceScrollY);
 legacyTabContext.persistWorkspaceViewState();
+assert.deepEqual(JSON.parse(legacyTabStorage.getItem(tabAKey)).scrollPositions,
+  { workspace: 246, account: 0 },
+  'Saving the migrated tab retains its former page offset without copying it to the other page.');
 assert.ok(legacyTabStorage.getItem(tabAKey), 'A legacy tab snapshot is migrated to the new session-only key after saving.');
 assert.equal(legacyTabStorage.getItem('team-follow-up-view-state-v1:u2'), null,
   'The migrated legacy snapshot is removed from this tab only.');
