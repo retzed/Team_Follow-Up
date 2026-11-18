@@ -20,7 +20,7 @@ if (start < 0 || end < 0) {
 const serialized = JSON.stringify(runtimeConfig, null, 2);
 const replacement = [
   openTag,
-  '/* This build intentionally uses the browser-local demo adapter. */',
+  '/* This build intentionally uses the browser-local data adapter. */',
   'window.TEAM_FOLLOW_UP_CONFIG = Object.freeze(' + serialized + ');',
   closeTag
 ].join(String.fromCharCode(10));
@@ -32,4 +32,4 @@ await writeFile(outputDirectory + '/.nojekyll', '', 'utf8');
 // GitHub Pages publishes dist/ only; include every locally bundled font in that artifact.
 await cp('assets/fonts', outputDirectory + '/assets/fonts', { recursive: true, force: true });
 
-console.log('Built the local Follow-Up demo to dist/ (browser-local data, demo sign-in enabled).');
+console.log('Built Follow-Up to dist/ (browser-local data and local account selection).');
