@@ -1,22 +1,22 @@
 # Follow-Up — Complete Documentation
 
-This document describes the current implementation in the **Follow-Up demo application repository**. It covers the product behavior, data model, code organization, local execution, regression testing, deployment, and security boundaries.
+This document describes the public Follow-Up application: its browser-local data model, product behavior, development workflow, deployment, and security boundaries. It covers the product behavior, data model, code organization, local execution, regression testing, deployment, and security boundaries.
 
-- Demo repository: https://github.com/retzed/Team_Follow-Up
-- Hosted demo: https://retzed.github.io/Team_Follow-Up/
+- Repository: https://github.com/retzed/Team_Follow-Up
+- Hosted application: https://retzed.github.io/Team_Follow-Up/
 - Step-by-step contributor guide: [PROJECT_GUIDE.md](../PROJECT_GUIDE.md)
 - Architecture and data flow: [ARCHITECTURE.md](ARCHITECTURE.md)
 - AWS-backed implementation and infrastructure: https://github.com/retzed/Team_Follow-Up_AWS-Deployment
 
-The demo and AWS-backed application have intentionally different persistence and authentication models. This document does not describe the AWS repository as if its backend were running behind the demo site.
+The browser-local and AWS-backed editions have different persistence and authentication models. This document does not describe the AWS repository as if its backend were running behind the local site.
 
 ## 1. Product overview
 
 Follow-Up is a bilingual workspace for following project work, temporary jobs, tasks, follow-ups, assignments, priorities, and activity history. It offers responsive desktop/mobile layouts, English/Arabic interface labels, right-to-left support, light/dark themes, search, assignment views, and hierarchy-aware archive/restore behavior.
 
-### Built-in demonstration profiles
+### Built-in browser-local profiles
 
-The demo includes six selectable team identities:
+The application includes six selectable team accounts:
 
 | User ID | Display name | Role label | English / Arabic sign-in name |
 |---|---|---|---|
@@ -28,11 +28,11 @@ The demo includes six selectable team identities:
 | `u6` | Dina | AWS Engineer | `Dina` / `دينا` |
 | `root` | root | Protected root profile | `root` |
 
-These roles and profiles are demonstration data, not an authorization system. The entered sign-in username selects the identity but is not displayed in normal application UI; **Name** in Profile is the user-facing display name. For each standard demo identity, the first non-empty password is accepted once and then stored as a salted PBKDF2-HMAC-SHA-256 hash; subsequent sign-ins verify it. Clearing or editing browser-local storage can reset or bypass this simulation. The protected demo `root` identity starts with `root@1234` and verifies it using PBKDF2-HMAC-SHA-256 (210,000 iterations). Changed demo passwords are stored as salted PBKDF2-HMAC-SHA-256 hashes in this browser's local storage. This remains a demo-only simulation: users control the browser and can inspect/modify local data, so it is not production authentication. The AWS application continues to authenticate and change passwords through Cognito.
+These roles and profiles are browser-local data, not an authorization system. The entered sign-in username selects the identity but is not displayed in normal application UI; **Name** in Profile is the user-facing display name. For each standard local identity, the first non-empty password is accepted once and then stored as a salted PBKDF2-HMAC-SHA-256 hash; subsequent sign-ins verify it. Clearing or editing browser-local storage can reset or bypass this simulation. The protected `root` account starts with `root@1234` and verifies it using PBKDF2-HMAC-SHA-256 (210,000 iterations). Changed local passwords are stored as salted PBKDF2-HMAC-SHA-256 hashes in this browser's local storage. This remains a browser-local only simulation: users control the browser and can inspect/modify local data, so it is not production authentication. The AWS application continues to authenticate and change passwords through Cognito.
 
 ### Account page
 
-The application opens on **My Account → Assigned Items**. Account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. Profile personal-detail fields are Display name, optional Arabic display name, phone, e-mail, Label, Label (Arabic), and Profile icon, with the two labels adjacent and Profile icon last. Privilege is shown beside the name in the top area, not as an editable Profile textbox. The icon selector lists icon names and previews the current selection before saving. Theme and language changes apply immediately and persist independently of the Profile **Save changes** button. Password changes use the provider appropriate to the deployment: browser-local password simulation in this demo and Cognito in AWS. Pinned items are stored per user.
+The application opens on **My Account → Assigned Items**. Account tabs are **Profile**, **Assigned Items**, **Pinned Items**, and **Search**. Profile personal-detail fields are Display name, optional Arabic display name, phone, e-mail, Label, Label (Arabic), and Profile icon, with the two labels adjacent and Profile icon last. Privilege is shown beside the name in the top area, not as an editable Profile textbox. The icon selector lists icon names and previews the current selection before saving. Theme and language changes apply immediately and persist independently of the Profile **Save changes** button. Password changes use the provider appropriate to the deployment: browser-local password simulation in this local and Cognito in AWS. Pinned items are stored per user.
 
 ### Main capabilities
 
@@ -57,13 +57,13 @@ Projects and Jobs are top-level work containers. They cannot be created as child
 | Task | Project | Follow-ups |
 | Follow-up | Project, Job, or Task | None |
 
-The client enforces these rules to guide the user and avoid invalid forms. The demo's checks run entirely in the browser and are not a security boundary.
+The client enforces these rules to guide the user and avoid invalid forms. The local's checks run entirely in the browser and are not a security boundary.
 
 ### Global item-name uniqueness
 
 Item names share one global namespace across **Projects, Jobs, Tasks, and Follow-ups**. A name cannot be reused by another item even when the item types differ or the items belong to different parents. Comparison applies Unicode NFKC normalization, trims leading/trailing whitespace, collapses repeated whitespace, and ignores letter case. The original entered name remains the displayed name.
 
-Archived items continue to reserve their names; archiving or deleting an item does not make its name available. Restoring an archived item is checked against the same global namespace. The built-in demo adapter validates creates, edits, and restores against active and archived records.
+Archived items continue to reserve their names; archiving or deleting an item does not make its name available. Restoring an archived item is checked against the same global namespace. The built-in local adapter validates creates, edits, and restores against active and archived records.
 
 ### Common item fields
 
@@ -76,7 +76,7 @@ Supported statuses for Projects, Jobs, and Tasks are:
 - `on-hold`
 - `completed`
 
-Follow-ups do not have a status field or due-date field. Converting a Task to a Follow-up removes both values; converting back to a Task starts with `not-started` and no due date. Legacy Follow-up values are ignored and removed during local demo-data normalization or the next server-side update/archive/restore.
+Follow-ups do not have a status field or due-date field. Converting a Task to a Follow-up removes both values; converting back to a Task starts with `not-started` and no due date. Legacy Follow-up values are ignored and removed during browser-local-data normalization or the next server-side update/archive/restore.
 
 Child items use the priority scale `low`, `medium`, `high`, and `urgent`. The important/star control raises an item to the maximum priority. Status changes are available only on Tasks (and parent Projects/Jobs); Follow-up edits record type/content/assignment/priority changes without status events. Status filters and Not Completed metrics exclude Follow-ups; due-date sorting/filtering also excludes them.
 
@@ -100,11 +100,11 @@ Archive entries preserve the item snapshot and relevant parent/root names and id
 
 ## 4. Runtime requirements
 
-### Using the hosted demo
+### Using the hosted application
 
 A current Chrome, Edge, Firefox, or Safari browser is recommended, with JavaScript and site storage enabled. The application needs no GPU, database server, cloud account, or special hardware.
 
-The app persists data in browser storage when available. Browser privacy settings, private browsing restrictions, storage quota limits, or clearing site data can remove or prevent persistence. Do not use the public demo for confidential, business-sensitive, or personal information.
+The app persists data in browser storage when available. Browser privacy settings, private browsing restrictions, storage quota limits, or clearing site data can remove or prevent persistence. Do not enter confidential, business-sensitive, or personal information in the browser-local application.
 
 ### Developing and testing
 
@@ -138,26 +138,26 @@ Open [http://localhost:8000](http://localhost:8000). Stop the server with `Ctrl+
 
 Opening `index.html` directly can work, but the local HTTP server provides more consistent origin and browser-storage behavior.
 
-### Sign in to the demo
+### Sign in to the local
 
 1. Enter one of the six English or Arabic usernames from Section 1.
 2. Enter any non-empty password.
 3. Sign in and explore the current workspace.
-4. Use **Reset demo data** to restore the starter dataset in this browser.
+4. Use **Reset local data** to restore the starter dataset in this browser.
 
-A login only sets the acting demonstration identity. It does not protect a user account.
+A login only sets the acting browser-local identity. It does not protect a user account.
 
 ## 6. Source layout and code organization
 
 | Path | Responsibility |
 |---|---|
-| `index.html` | HTML shell, styles, responsive layouts, translation labels, demo sign-in gate, data adapter, renderers, dialogs, event handlers, and startup |
-| `scripts/build.mjs` | Builds the static artifact and forces the browser-local demo configuration |
+| `index.html` | HTML shell, styles, responsive layouts, translation labels, local sign-in gate, data adapter, renderers, dialogs, event handlers, and startup |
+| `scripts/build.mjs` | Builds the static artifact and forces the browser-local configuration |
 | `scripts/check-syntax.mjs` | Parses the embedded executable JavaScript blocks |
 | `scripts/test-data-api.mjs` | Regression checks for the data-access adapter and local persistence behavior |
-| `scripts/test-demo-build.mjs` | Ensures the public artifact has demo auth/data settings and no remote API credentials/configuration |
+| `scripts/test-build-config.mjs` | Ensures the public artifact has browser-local runtime settings and no remote API credentials/configuration |
 | `scripts/test-output-escaping.mjs` | Exercises the central HTML-output escaping helper |
-| `scripts/test-session-refresh.mjs` | Verifies browser-wide demo identity continuity alongside independent per-tab view restoration, legacy tab-state migration, and sign-out cleanup. |
+| `scripts/test-session-refresh.mjs` | Verifies browser-wide local identity continuity alongside independent per-tab view restoration, legacy tab-state migration, and sign-out cleanup. |
 | `scripts/test-activity-write-coverage.mjs` | Checks that item mutations maintain activity history |
 | `scripts/test-activity-merge-idempotency.mjs` | Checks duplicate activity merge behavior |
 | `scripts/test-history-structure.mjs` | Checks history scope, structure, and display contract |
@@ -176,7 +176,7 @@ The application keeps its public distribution self-contained. Within `index.html
 1. Early language, direction, and theme preference bootstrap.
 2. Runtime configuration block overwritten by the build script.
 3. Data-access adapter and conversion/normalization helpers.
-4. Authentication gate that chooses the demo sign-in flow.
+4. Authentication gate that chooses the local sign-in flow.
 5. Main UI controller for state, rendering, list/search logic, activity refresh, dialogs, and delegated interactions.
 6. Layout compatibility fixes for the finished responsive interface.
 
@@ -192,7 +192,7 @@ Hierarchy lookups are built through an indexed parent/child map. Full descendant
 
 The Activity index groups normalized events by both item and root. Child sorting reads the child's indexed timeline, instead of repeatedly scanning the entire root timeline during a comparator call. Root history remains scoped to its root as intended.
 
-These rules are covered by `scripts/test-progressive-loading.mjs` and `scripts/test-child-search-arabic-activity.mjs`. When changing these paths, run `npm test` and `npm run build`; the GitHub Pages workflow publishes only after the test/build job succeeds. These optimizations do not alter the demo's browser-local persistence or turn it into a shared backend.
+These rules are covered by `scripts/test-progressive-loading.mjs` and `scripts/test-child-search-arabic-activity.mjs`. When changing these paths, run `npm test` and `npm run build`; the GitHub Pages workflow publishes only after the test/build job succeeds. These optimizations do not alter this edition's browser-local persistence or turn it into a shared backend.
 
 ## 7. Data access and storage model
 
@@ -200,25 +200,25 @@ The built-in adapter maintains four logical collections:
 
 - **Work items:** active items, hierarchy references, assignment, status/priority, and timestamps.
 - **Activity events:** event identity, actor, affected item, hierarchy context, action/kind, and time.
-- **User profiles:** six built-in demonstration identities and display-role labels.
+- **User profiles:** six built-in browser-local identities and display-role labels.
 - **Archive records:** deleted snapshots with archive and parent/root context.
 
 The local adapter emulates common access patterns using derived fields for top-level lists, parent queries, workspace/root views, assignment lists, and timestamp ordering. Those derived keys are for local application behavior and future adapter compatibility; they do not turn browser storage into DynamoDB.
 
 ### Storage and isolation
 
-- `localStorage` stores the demo workspace and its built-in logical tables.
-- `localStorage` is the only demo-session store. One browser-profile identity is shared across every tab on this site origin and survives refreshes, tab closure, and browser restarts. Signing in or out in one tab updates all other open tabs. Separate browser profiles and private sessions are isolated. Clearing this site's website data removes the identity; clearing history alone may not remove website storage unless the browser's clearing options include it.
+- `localStorage` stores the local workspace and its built-in logical tables.
+- `localStorage` is the only local-session store. One browser-profile identity is shared across every tab on this site origin and survives refreshes, tab closure, and browser restarts. Signing in or out in one tab updates all other open tabs. Separate browser profiles and private sessions are isolated. Clearing this site's website data removes the identity; clearing history alone may not remove website storage unless the browser's clearing options include it.
 - **View state is tab-scoped:** each tab stores its own page, selected item, workspace/account tab, filters, expanded rows, and scroll position in `sessionStorage`. Selecting a Project/Job writes the tab snapshot immediately. On refresh, the app restores the selected ID, loads every top-level page, and checks that exact ID with the item resolver if it is absent from the list. The app changes to a fallback only when the resolver confirms that the selected parent no longer exists; a temporary lookup failure does not discard the saved selection. Rendering also compares normalized IDs and cannot silently replace a non-empty selection. Other tabs do not read, overwrite, or inherit the view. A newly opened tab starts from the application defaults. Older v1 snapshots are migrated only from that same tab's `sessionStorage`; the legacy browser-wide view snapshot is ignored.
-- Demo users within the same browser profile see the same local workspace.
+- local users within the same browser profile see the same local workspace.
 - Built-in item mutations create a compact change signal containing affected item, hierarchy, and previous/current assignee IDs. The writer persists the merged snapshot before publishing the signal through `BroadcastChannel`; the browser `storage` event is the fallback transport.
 - Cross-tab writes use the Web Locks API when available to serialize the read/merge/write critical section. A tab merges only the item IDs and profile IDs it actually changed into the latest persisted snapshot; it never replaces the complete workspace with a stale in-memory snapshot. This prevents a write from one tab from silently erasing unrelated updates made by another tab.
 - Activity events are persisted as individual immutable event records. A tab does not rewrite or clear the complete Activity collection when another tab may be appending events.
 - Each active same-origin tab receives compact change notifications and independently refreshes affected views. A lightweight five-second signal check and visibility/focus reconciliation compare the local workspace with the latest persisted snapshot, recovering all missed item deltas even if multiple notifications were coalesced or a background tab was suspended. If its signed-in user is the previous or new assignee—or is assigned to a descendant of an updated Project, Job, or Task—an open **Assigned Items** tab refreshes immediately. If an assignment request is already running, a follow-up refresh is queued; if the tab is elsewhere, its Assigned Items cache is marked stale and reloads when opened.
-- Different browser profiles, separate browsers, private sessions, and devices do not share state. The public demo does not broadcast between different visitors or across devices; cross-device shared work requires the AWS-backed deployment.
+- Different browser profiles, separate browsers, private sessions, and devices do not share state. The public local does not broadcast between different visitors or across devices; cross-device shared work requires the AWS-backed deployment.
 - There is no synchronized multi-user database, server backup, or cross-device data transfer.
 
-The data is editable by the visitor through browser developer tools. Local persistence and cross-tab notifications are demo conveniences, not a security boundary or durable shared service.
+The data is editable by the visitor through browser developer tools. Local persistence and cross-tab notifications are browser-local features, not a security boundary or durable shared service.
 
 ## 8. Build, test, and publish
 
@@ -234,7 +234,7 @@ Build the static artifact:
 npm run build
 ```
 
-The result is `dist/index.html` plus `dist/.nojekyll`. The build script explicitly sets the public demo to the built-in local data mode and enables the local demonstration sign-in. It clears Cognito identifiers and the remote API URL so the published demo cannot accidentally point at a configured AWS endpoint.
+The result is `dist/index.html` plus `dist/.nojekyll`. The build script explicitly sets the public local to the built-in local data mode and enables the local browser-local sign-in. It clears Cognito identifiers and the remote API URL so the published local cannot accidentally point at a configured AWS endpoint.
 
 ### GitHub Pages workflow
 
@@ -244,34 +244,34 @@ The Pages artifact contains the static application, not the full source reposito
 
 ## 9. Security, privacy, and error handling
 
-This repository is a demonstration, **not a production application**.
+This repository is a browser-local, **not a production application**.
 
-- The public demo is not a security boundary. PBKDF2 protects the representation of locally changed passwords from plain-text storage, but the code and root credential record are shipped to the browser and users can inspect or edit browser-local data.
+- The public local is not a security boundary. PBKDF2 protects the representation of locally changed passwords from plain-text storage, but the code and root credential record are shipped to the browser and users can inspect or edit browser-local data.
 - The workspace and all client-side code are visible to the visitor.
-- Do not put real credentials, secrets, customer information, employee-sensitive notes, or confidential project data in the demo.
+- Do not put real credentials, secrets, customer information, employee-sensitive notes, or confidential project data in the local.
 - Keep production keys and real identity mappings out of HTML, sample datasets, configuration, source control, and CI logs.
 - Use the central `esc()` helper before interpolating untrusted values into HTML templates. Prefer `textContent` where markup is not required.
 - Continue catching storage/bootstrap/network failures and presenting a useful failure or fallback state without exposing tokens or internal secrets.
 - Client-side hierarchy checks improve usability only; authorization must be enforced server-side in a production deployment.
 - Do not interpret passing frontend tests as proof of production security or live-service availability.
 
-The separate AWS repository is the appropriate place to review the production-oriented trust boundary: Cognito JWT validation, trusted user-profile mapping, Lambda-side hierarchy/field validation, server-owned timestamps/index fields, least-privilege DynamoDB access, and append-oriented activity writes. The public demo remains disconnected from that runtime.
+The separate AWS repository is the appropriate place to review the production-oriented trust boundary: Cognito JWT validation, trusted user-profile mapping, Lambda-side hierarchy/field validation, server-owned timestamps/index fields, least-privilege DynamoDB access, and append-oriented activity writes. The public local remains disconnected from that runtime.
 
 ## 10. Troubleshooting
 
-**The sign-in fails.** Use one of the six standard demo identities (English or Arabic alias), or use `root` with its initial `root@1234` password. If a standard demo user's password was changed in this browser, sign in with that saved password.
+**The sign-in fails.** Use one of the six standard local identities (English or Arabic alias), or use `root` with its initial `root@1234` password. If a standard account's password was changed in this browser, sign in with that saved password.
 
-**A different teammate sees the same items.** This is expected: the demo profiles share one workspace in the same browser profile.
+**A different teammate sees the same items.** This is expected: the local profiles share one workspace in the same browser profile.
 
 **Changes do not persist after closing the browser.** Check whether site storage is blocked, the browser is in a privacy mode, or the site's data was cleared. The app can fall back to memory when storage fails, in which case changes may not survive.
 
-**The demo data looks wrong after a prior test.** Use **Reset demo data** to restore the starter dataset for the current browser.
+**The local data looks wrong after a prior test.** Use **Reset local data** to restore the starter dataset for the current browser.
 
 **Tests fail.** Run `npm test`, read the first failing assertion, and inspect the associated test in `scripts/` before changing behavior. Add or update a regression test when requirements intentionally change.
 
 **The site did not publish.** Check the latest GitHub Actions run, confirm Pages is configured to use GitHub Actions, and verify the build/deploy jobs succeeded.
 
-**The team needs shared, synchronized work data.** The current demo does not provide it. Review the separate AWS implementation and treat backend authentication, API authorization, data migration, monitoring, recovery, and cost controls as a dedicated deployment effort.
+**The team needs shared, synchronized work data.** The current local does not provide it. Review the separate AWS implementation and treat backend authentication, API authorization, data migration, monitoring, recovery, and cost controls as a dedicated deployment effort.
 
 
 ## Account page, Search, navigation and mobile reliability (28 October 2026)
@@ -282,11 +282,11 @@ The default landing view is **My Account → Assigned Items**. The username cont
 
 The displayed name is a display name, not a login username. The profile editor contains **Display name**, optional **Display name (Arabic)**, **Phone number**, **E-mail**, **Label**, optional **Label (Arabic)**, and **Profile icon** in that order. The Arabic Label text is exactly `Label (Arabic)`; the two label fields are adjacent and Profile icon is the final personal-detail field. The icon selector lists supported icon names and previews the selected icon. The privilege value is not an editable profile field: the privilege indicator remains beside the display name at the top of the page, while authorized team-privilege management remains a separate function. The root profile remains read-only through the profile editor.
 
-**Save changes** persists profile fields. Theme and language are changed and persisted independently. Arabic display-name and label variants are used when Arabic is active and the optional value is non-empty. Password updates follow the demo's local demonstration behavior; they are not production authentication.
+**Save changes** persists profile fields. Theme and language are changed and persisted independently. Arabic display-name and label variants are used when Arabic is active and the optional value is non-empty. Password updates follow this edition's local browser-local behavior; they are not production authentication.
 
 ### Account Search behavior
 
-The account **Search** tab searches the loaded top-level Projects and Jobs, not a separate flat index of descendant Tasks or Follow-ups. The text query covers item name, Arabic name, description, type/status values, and related creator/updater/owner/assignee identity information. The user selector can narrow results to a teammate associated with the top-level item through creation, last update, ownership, or assignment. It recognizes both the demo's short field aliases and the canonical AWS field names (including `createdByUserId`, `updatedByUserId`, `ownerId`, and `assignedTo` / related assignee aliases).
+The account **Search** tab searches the loaded top-level Projects and Jobs, not a separate flat index of descendant Tasks or Follow-ups. The text query covers item name, Arabic name, description, type/status values, and related creator/updater/owner/assignee identity information. The user selector can narrow results to a teammate associated with the top-level item through creation, last update, ownership, or assignment. It recognizes both the browser-local data model's short field aliases and the canonical AWS field names (including `createdByUserId`, `updatedByUserId`, `ownerId`, and `assignedTo` / related assignee aliases).
 
 Search also filters by Project/Job type and status. Its date selector supports **Last updated**, **Last created**, and **Created**; **From** and **To** are inclusive calendar-date bounds for the selected timestamp. **Created** sorts oldest first; **Last created** sorts newest first. **Clear** resets the query, type, status, date mode, date bounds, and user selector. The Project/Job workspace sidebar has its own independent filters and state.
 
@@ -300,7 +300,7 @@ Opening a Project or Job from Search switches from My Account to the workspace v
 
 Expanding the workspace Search sidebar preserves the selected root and selected child. It restores the parent/detail view immediately, refreshes the selected root's children when needed, and restores the selected child position when the hierarchy finishes loading. A failed lazy request is logged and leaves the standard data-load retry path available rather than intentionally replacing a valid selection with a blank view.
 
-Activity history remains on-demand. Search, Assigned Items, and Pinned Items open the relevant history popup through the existing history loader/cache logic; the browser does not fetch all history merely to render an account list. Project/Job history uses the top-level hierarchy scope; child history uses the item's relevant history scope. Demo storage remains browser-local. No API, table, or schema migration is involved in these UI changes.
+Activity history remains on-demand. Search, Assigned Items, and Pinned Items open the relevant history popup through the existing history loader/cache logic; the browser does not fetch all history merely to render an account list. Project/Job history uses the top-level hierarchy scope; child history uses the item's relevant history scope. workspace storage remains in the browser. No API, table, or schema migration is involved in these UI changes.
 
 ### Mobile and keyboard behavior
 
@@ -314,4 +314,4 @@ Closing Search clears a queued sidebar query timer and advances the sidebar quer
 
 ### Validation and scope
 
-Regression tests cover the profile field order and label text, removal of the profile privilege input, date and user filter wiring, explicit Search actions, canonical AWS user-ID aliases, mobile filter-grid rules, post-hydration ancestor expansion, and selected-workspace restoration. Both repositories keep the same frontend interaction contract. In this public repository, authentication, user profiles, work items, activity and archive data remain demo-only local data. Never use the demo for real or confidential records.
+Regression tests cover the profile field order and label text, removal of the profile privilege input, date and user filter wiring, explicit Search actions, canonical AWS user-ID aliases, mobile filter-grid rules, post-hydration ancestor expansion, and selected-workspace restoration. Both repositories keep the same frontend interaction contract. In this public repository, authentication, user profiles, work items, activity and archive data remain browser-local only local data. Never use the local for real or confidential records.
