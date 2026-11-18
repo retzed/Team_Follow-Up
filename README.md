@@ -87,7 +87,7 @@ The **Projects & Jobs** workspace Search sidebar starts collapsed. Its floating 
 
 **To use the application:** a current desktop or mobile browser with JavaScript enabled and browser storage available. No GPU, database server, cloud account, or special hardware is required. The application is delivered as a static browser client; persistent workspace data requires browser storage.
 
-**For development:** Git to clone the repository, Node.js 20 or newer for the test/build scripts, and Python 3 if you want to use Python's built-in local HTTP server. A typical modern laptop or desktop is sufficient; 2 CPU cores, 4 GB RAM, and roughly 500 MB of free disk space are practical recommendations, not strict application limits. No third-party npm packages are currently required.
+**For development:** Git to clone the repository, Node.js 24 or newer for the test/build scripts, and Python 3 if you want to use Python's built-in local HTTP server. A typical modern laptop or desktop is sufficient; 2 CPU cores, 4 GB RAM, and roughly 500 MB of free disk space are practical recommendations, not strict application limits. No third-party npm packages are currently required.
 
 ## Installation
 
@@ -98,7 +98,7 @@ git clone https://github.com/retzed/Team_Follow-Up.git
 cd Team_Follow-Up
 ```
 
-No dependency installation is needed for the public browser-local application. The application uses browser-native APIs, and the test/build scripts do not require third-party npm packages. Install Node.js 20 or newer only if you plan to run the validation/build commands.
+No dependency installation is needed for the public browser-local application. The application uses browser-native APIs, and the test/build scripts do not require third-party npm packages. Install Node.js 24 or newer only if you plan to run the validation/build commands.
 
 ## Run locally
 
@@ -112,7 +112,7 @@ python -m http.server 8000
 
 Then open [http://localhost:8000](http://localhost:8000).
 
-**Node.js development checks** (Node.js 20 or newer recommended)
+**Node.js development checks** (Node.js 24 or newer recommended)
 
 ```bash
 npm test
@@ -186,6 +186,6 @@ Changes pushed to `main` run the test suite and publish the application through 
 
 ## Current scope and future work
 
-**Included now:** the browser application, local browser-local sign-in, starter workspace records, client-side persistence, UI/data regression tests, project documentation, and automated static-site publishing.
+**Included now:** the browser application, browser-local sign-in, starter workspace records, client-side persistence, UI/data regression tests, project documentation, and automated static-site publishing.
 
 **Not included in the public browser-local build:** shared multi-user persistence, real account authentication, a server-side API, or a production database. A future backend can be introduced behind the data access interface without tying the product to any particular cloud provider.
