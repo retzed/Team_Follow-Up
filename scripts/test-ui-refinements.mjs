@@ -16,7 +16,7 @@ assert.ok(femaleUserIcon[1].includes('M8.1 13.7C7.2 13 6.6 12 6.7 10.7') && fema
 assert.ok(html.includes("'profile-user':'User ♂'") && html.includes("'female-user':'User ♀'"), 'Male and female profile icon names must include their globally recognizable gender symbols.');
 assert.ok(!html.includes('const genderSymbol=') && !html.includes("const badge='<circle") && !html.includes("'profile-user':{stroke:") && !html.includes("'female-user':{stroke:"), 'Gender symbols belong in the icon names only; the original male and female SVG illustrations must remain unchanged.');
 assert.ok(femaleUserIcon[1].includes('L12 18l2.8-2.6') && html.includes("{value:'female-user'}") && html.includes("'female-user':'User ♀'"), 'User ♀ must include its neckline and remain selectable with its explicit label.');
-assert.ok(html.includes("if(!['user','profile-user','female-user','compass'"), 'The demo profile API must accept the Female User icon value.');
+assert.ok(html.includes("if(!['user','profile-user','female-user','compass'"), 'The browser-local profile API must accept the Female User icon value.');
 const targetedStart = html.indexOf('<style id="targeted-history-and-child-search-polish">');
 const targetedEnd = html.indexOf('</style>', targetedStart);
 assert.ok(targetedStart >= 0 && targetedEnd > targetedStart, 'Targeted refinements stylesheet must exist.');
@@ -338,7 +338,7 @@ const assignedFilterEnd=html.indexOf('\nfunction accountAssignedSectionVisibilit
 assert.ok(assignedFilterStart>=0&&assignedFilterEnd>assignedFilterStart&&html.slice(assignedFilterStart,assignedFilterEnd).includes('.filter(item=>isActiveItem(item))'),'Assigned Items filtering must reject archived records.');
 assert.ok(html.includes('const activePinnedRows=(ui.accountPinnedRows||[]).filter(isActiveItem)'),'Pinned Items rendering must reject archived records even before a reload completes.');
 
-assert.ok(html.includes('ui.accountAssignedRows=(ui.accountAssignedRows||[]).filter(isActiveItem)') && html.includes('ui.accountPinnedRows=(ui.accountPinnedRows||[]).filter(isActiveItem)'), 'Demo real-time deletions must remove archived records from Assigned and Pinned caches regardless of assignee changes.');
+assert.ok(html.includes('ui.accountAssignedRows=(ui.accountAssignedRows||[]).filter(isActiveItem)') && html.includes('ui.accountPinnedRows=(ui.accountPinnedRows||[]).filter(isActiveItem)'), 'browser-local real-time deletions must remove archived records from Assigned and Pinned caches regardless of assignee changes.');
 
 
 // Follow-up assignments are optional; an explicit None must not be rejected
@@ -359,7 +359,7 @@ assert.ok(itemSubmitSource.includes("if(type!=='followup'&&childrenOf(item.id).l
 assert.ok(
   itemSubmitSource.includes("const previousParent=p.status==='not-started'?copyWorkspace(p):null") ||
   itemSubmitSource.includes("const previousParent=!serverManagedParentActivation&&p.status==='not-started'?copyWorkspace(p):null"),
-  'The demo client must promote a Not started parent locally, while the AWS client delegates activation to the transactional API.');
+  'The browser-local client must promote a Not started parent locally, while the AWS client delegates activation to the transactional API.');
 assert.ok(itemSubmitSource.includes("p.status='in-progress'") &&
   (itemSubmitSource.includes("serverManagedParentActivation=api?.mode==='api'") || itemSubmitSource.includes('persistItemMutation(p,false,parentStatusEvents,previousParent)')),
   'Child creation must switch a Not started parent to In progress locally or through the server-managed path.');
