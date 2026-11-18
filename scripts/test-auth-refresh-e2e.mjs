@@ -12,7 +12,7 @@ assert.ok(gateEnd > gateStart, 'The pre-authentication gate must be a complete s
 const gateSource = html.slice(gateStart, gateEnd);
 
 assert.ok(!html.includes('team-follow-up-local-auth-v1'),
-  'The retired local demo session key and migration path are not shipped.');
+  'The retired local browser-local session key and migration path are not shipped.');
 
 const SESSION_KEY = 'team-follow-up-local-auth-v2';
 
@@ -130,7 +130,7 @@ function makeGateEnvironment({ session, local, config = null } = {}) {
 }
 
 const blockedTabStorage = new Proxy({}, {
-  get() { throw new Error('Demo authentication must not access sessionStorage.'); }
+  get() { throw new Error('browser-local authentication must not access sessionStorage.'); }
 });
 const local = memoryStorage();
 
@@ -145,7 +145,7 @@ firstLoad.finishParsing();
 // Sign in through the real pre-auth form handler. The gate must persist first,
 // then publish the auth context and inject the application bootstrap script.
 firstLoad.elements.get('signInUsername').value = 'Zyad';
-firstLoad.elements.get('signInPassword').value = 'demo-password';
+firstLoad.elements.get('signInPassword').value = 'browser-local-password';
 await firstLoad.elements.get('signInForm').dispatch('submit', { preventDefault() {} });
 assert.equal(firstLoad.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u2');
 assert.equal(firstLoad.elements.get('signInScreen').hidden, true);
@@ -198,7 +198,7 @@ assert.equal(firstLoad.elements.get('signInScreen').hidden, false);
 
 // Signing in as a different team member in the second tab updates the first tab.
 secondTab.elements.get('signInUsername').value = 'Nadine';
-secondTab.elements.get('signInPassword').value = 'demo-password';
+secondTab.elements.get('signInPassword').value = 'browser-local-password';
 await secondTab.elements.get('signInForm').dispatch('submit', { preventDefault() {} });
 assert.equal(secondTab.window.__TEAM_FOLLOW_UP_AUTH_CONTEXT?.teamUserId, 'u3');
 assert.equal(local.getItem(SESSION_KEY), 'u3');
