@@ -4,7 +4,7 @@ A bilingual (English/Arabic) team workspace for organizing projects, jobs, tasks
 
 **URL: [retzed.github.io/Team_Follow-Up](https://retzed.github.io/Team_Follow-Up/)** · [Project guide](PROJECT_GUIDE.md) · [Application architecture](docs/ARCHITECTURE.md) · [Complete application documentation](docs/DOCUMENTATION.md)
 
-> this public build uses browser-local sign-in and local browser storage. It has no server-side database or real authentication. Do not enter private, personal, or confidential information. Each browser profile has its own locally stored workspace.
+> this public build uses browser-local sign-in and browser storage. It has no server-side database or real authentication. Do not enter private, personal, or confidential information. Each browser profile has its own locally stored workspace.
 
 ## Try the app
 
