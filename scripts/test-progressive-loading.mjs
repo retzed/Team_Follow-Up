@@ -137,7 +137,7 @@ check(html.includes('history-controls.has-scope') && html.includes('grid-templat
 
 if (html.includes('async function mockRoute(method,path,body)')) {
   check(html.includes("await new Promise(resolve=>{if(typeof setTimeout==='function')setTimeout(resolve,0);else resolve();})"),
-    'The local demo API must yield before table work so the loading indicator can paint.');
+    'The local browser-local API must yield before table work so the loading indicator can paint.');
 }
 
 // The item-history popup previously referenced an undeclared historyRootId while loading, throwing before its request could start.
