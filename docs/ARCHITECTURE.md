@@ -79,7 +79,7 @@ The four logical collections are:
 ### Startup
 
 1. The earliest script sets document language, direction, and theme defaults to avoid an incorrect initial layout.
-2. The local runtime configuration selects the built-in adapter and browser-local sign-in.
+2. The runtime configuration selects the built-in adapter and browser-local sign-in.
 3. The sign-in gate reads the browser-profile identity directly from `localStorage`. A new sign-in is accepted only after the identity is written and read back successfully. The same record is used by every tab in that browser profile; no tab-scoped identity is stored or consulted. The browser `storage` event applies a sign-in or sign-out made in another tab to the current running instance. This does not authenticate a real account.
 4. The adapter loads and normalizes the saved tables, migrates older local schema shapes when needed, and returns a UI snapshot.
 5. The application controller initializes its indexes, selected workspace item, translations, and event handlers, then renders the UI.
