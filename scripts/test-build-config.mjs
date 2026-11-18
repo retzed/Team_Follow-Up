@@ -90,7 +90,7 @@ assert.ok(!deployedFavicon.includes('#102e50'), 'embedded favicon no longer uses
 assert.ok(html.includes('href="data:image/png;base64,') && html.includes('href="data:image/x-icon;base64,'), 'static artifact embeds PNG and ICO favicon variants');
 assert.ok(!/(?:src|href)=["'][^"']+[.](?:svg|png|jpe?g|gif|webp|ico)(?:[?#][^"']*)?["']/i.test(html), 'static artifact has no external image-file dependencies');
 
-assert.ok(html.includes('Local sign-in uses built-in team accounts and browser-local storage.'), 'the sign-in notice accurately describes browser-local account selection');
+assert.ok(html.includes('Local sign-in uses built-in team accounts and browser storage.'), 'the sign-in notice accurately describes browser-local account selection');
 assert.ok(!html.includes('REPLACE_WITH_COGNITO_USER_POOL_ID') && !html.includes('REPLACE_WITH_PUBLIC_APP_CLIENT_ID'), 'the application contains no authentication placeholders');
 
 console.log('Application build tests passed: local data mode, account selection, no remote API settings, and GitHub Pages artifact structure.');
