@@ -50,6 +50,6 @@ assert.equal(countContext.loadedRootItemCounts().get('root-0'), 201, 'a child in
 assert.ok(html.includes('renderOverview(parent,s)'), 'the detail page must reuse its first subtree summary');
 assert.ok(html.includes('countNotCompletedForCurrentFilter(parent,all)'), 'the overview must reuse the same subtree for its filtered count');
 assert.ok(html.includes('copyWorkspace({schema:data.schema,users:data.users||[],parents:data.parents||[],children:[],activity:[]})'),
-  'the demo UI cache must not deep-clone all child records and activity events');
+  'the browser-local UI cache must not deep-clone all child records and activity events');
 
 console.log('Item-mutation responsiveness tests passed.');
