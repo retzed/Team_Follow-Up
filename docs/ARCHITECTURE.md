@@ -4,7 +4,7 @@
 
 This repository contains the **browser-local version** of Follow-Up. It is a static site: GitHub Pages serves the HTML artifact, and application state lives in the visitor's browser. There is no application server, remote database, or shared multi-user workspace in this build.
 
-The production-oriented AWS implementation is maintained separately in the [Follow-Up AWS Deployment repository](https://github.com/retzed/Team_Follow-Up_AWS-Deployment). That repository has a Cognito-authenticated API and DynamoDB persistence; its security and deployment topology must not be inferred from this browser-local.
+The production-oriented AWS implementation is maintained separately in the [Follow-Up AWS Deployment repository](https://github.com/retzed/Team_Follow-Up_AWS-Deployment). That repository has a Cognito-authenticated API and DynamoDB persistence; its security and deployment topology must not be inferred from the browser-local edition.
 
 ## System context
 
@@ -32,7 +32,7 @@ The runtime is organized as a small set of script-level components inside `index
 | Component | Responsibility |
 |---|---|
 | Preference bootstrap | Detects supported browser language and color-scheme preferences before the page paints. Unsupported or indeterminate preferences fall back to English and dark mode. |
-| Runtime configuration | Defines the public local configuration. The build script replaces this block to force the built-in data mode and local browser-local sign-in. |
+| Runtime configuration | Defines the public browser-local configuration. The build script replaces this block to force the built-in data mode and browser-local sign-in. |
 | Data-access adapter | Exposes asynchronous methods for bootstrap, users, top-level items, children, assignments, activity, archive, restore, and commits. |
 | Sign-in gate | Reads and writes one browser-profile identity in `localStorage`. Every tab on the same site origin uses that identity, and the browser `storage` event propagates sign-in and sign-out changes to open tabs. Sign-in is illustrative, not a security boundary. |
 | Application controller | Owns current UI state, filtering, selection, rendering, dialogs, translations, activity refresh, and delegated event handlers. |
@@ -111,10 +111,10 @@ Regression tests cover the event-propagation boundary, cyclic and deep hierarchy
 - Each tab stores its own page/view snapshot in `sessionStorage`, including selected items, tabs, filters, expanded rows, and scroll position. A hard refresh restores that tab's snapshot; other tabs cannot read or replace it. View state is never written to browser-wide `localStorage`.
 - Signing in or out in one tab updates the shared record. Other open tabs receive the browser `storage` event and switch to the new identity or return to sign-in. There is no tab-specific authentication state.
 - Separate browser profiles and private-browsing contexts have separate website storage and therefore separate local sessions. Clearing this site's website data removes the identity; clearing only navigation history may not remove site storage, depending on the browser's selected clearing options.
-- Because the local dataset itself is stored in `localStorage`, browsers that block persistent site storage cannot run this browser-local reliably; the sign-in gate stays closed and reports the storage problem rather than allowing a session that will be lost on refresh.
-- local usernames share the same workspace when used in the same browser profile because they are views of one local browser-local dataset.
+- Because the local dataset itself is stored in `localStorage`, browsers that block persistent site storage cannot run the browser-local version reliably; the sign-in gate stays closed and reports the storage problem rather than allowing a session that will be lost on refresh.
+- Team accounts share the same workspace when used in the same browser profile because they are views of one browser-local dataset.
 - Other browsers, devices, profiles, and private windows have independent data.
-- Clearing site storage or using **Reset local data** removes or resets the browser-local workspace.
+- Clearing site storage or using **Reset workspace data** removes or resets the browser-local workspace.
 
 These properties are acceptable only for a local. Browser data can be inspected or changed by the visitor and must never be treated as authoritative or confidential.
 
@@ -122,15 +122,15 @@ These properties are acceptable only for a local. Browser data can be inspected 
 
 - The public build intentionally uses the browser-local adapter and does not require a backend endpoint.
 - A username selects a browser-local identity; any non-empty password is accepted. This is **not authentication** and provides no account protection.
-- No secrets or production credentials belong in the HTML, runtime configuration, sample data, tests, or GitHub Pages artifact.
+- No secrets or production credentials belong in the HTML, runtime configuration, starter workspace data, tests, or GitHub Pages artifact.
 - User-provided names, descriptions, and search terms are untrusted. Keep HTML interpolation escaped and prefer DOM text APIs.
-- The local's local state and client-side hierarchy checks are usability controls, not security enforcement.
+- Browser-local state and client-side hierarchy checks are usability controls, not security enforcement.
 
 For shared team use, the separate AWS implementation places identity and authorization at Cognito/API Gateway and enforces business rules, identity mapping, server-owned keys, and writes in Lambda. DynamoDB holds durable work-item, activity, user-profile, and archive records.
 
 ## Build and delivery
 
-The local's GitHub Actions workflow runs the Node.js test suite, generates `dist/index.html`, adds `dist/.nojekyll`, and publishes the static artifact through GitHub Pages when a validated commit reaches `main`. The build explicitly resets runtime configuration to the browser-local mode so the public local cannot accidentally inherit AWS API settings.
+The GitHub Actions workflow runs the Node.js test suite, generates `dist/index.html`, adds `dist/.nojekyll`, and publishes the static artifact through GitHub Pages when a validated commit reaches `main`. The build explicitly resets runtime configuration to the browser-local mode so the public build cannot accidentally inherit AWS API settings.
 
 Useful developer commands:
 
@@ -147,7 +147,7 @@ The account hub and workspace share the same item model but intentionally have s
 
 Each Search result presents explicit Open in workspace, Activity history, and pin actions. Selecting a root switches the page state from account to workspace before rendering details. Selecting an assigned/pinned child resolves its root, waits for root hydration, expands its Task ancestor chain from the hydrated hierarchy, then scrolls the selected child into view. The sidebar collapse control must preserve the selected root and selected child; expansion restores the detail view after lazy loading.
 
-Activity remains on-demand instead of being fetched for every account result. Item-history buttons use the existing item/root activity cache and query boundary. In the local, that cache and all records are browser-local; in the AWS repo, cached GET responses improve performance but the authenticated API and DynamoDB remain authoritative.
+Activity remains on-demand instead of being fetched for every account result. Item-history buttons use the existing item/root activity cache and query boundary. In the browser-local edition, its cache and all records remain in the browser; in the AWS repo, cached GET responses improve performance but the authenticated API and DynamoDB remain authoritative.
 
 For responsive layout, the account Search filter grid switches to two shrink-safe columns at widths up to 820 CSS pixels, with the query spanning the row. Input/select controls have bounded widths, result action buttons wrap, and the same structure must work in both English LTR and Arabic RTL. Inert result cards are not focusable; their explicit buttons provide keyboard access. These frontend changes add no data model, API, or persistence contract.
 
