@@ -136,6 +136,49 @@ Before inviting external organizations:
 
 A cost budget is an alerting mechanism, not a hard spending cap. Estimate costs under realistic tenant counts and usage before public registration.
 
+
+### WhatsApp event notifications
+
+Add an optional notification channel that sends a WhatsApp message to a team member when they are assigned a new Task/Follow-up or when an important update affects work already assigned to them. Keep WhatsApp as a user-controlled delivery channel alongside in-app notifications; an unavailable WhatsApp provider must never block saving a work-item change.
+
+**Recommended provider:** the official Meta WhatsApp Business Platform Cloud API. Do not automate the consumer WhatsApp Web interface, use browser macros, or depend on unofficial WhatsApp libraries or personal-account automation.
+
+**Notification preferences and consent**
+
+- Add an international-format phone number (E.164) to the user's contact preferences and verify that the user controls it before enabling WhatsApp delivery.
+- Ask for an explicit, recorded opt-in to receive Follow-Up task and assignment notifications on WhatsApp. Explain the sending business/name, the notification categories, and how to opt out. Keep consent timestamp, source, policy version, and current status.
+- Let each user enable/disable WhatsApp notifications and choose event categories, such as new assignment, reassignment, priority escalation, due-date change, and significant status change. Provide quiet hours, a per-user timezone, and an immediate/batched delivery preference where appropriate.
+- Honor opt-outs and revoked consent immediately, including requests made outside the application. Do not infer consent from a saved phone number or from a user being assigned work.
+- Never send to unverified numbers or users who have opted out. Do not include sensitive descriptions, confidential notes, access tokens, or unnecessary personal information in the message.
+
+**Events and delivery pipeline**
+
+1. The work-item service commits its normal item and activity transaction and records a notification event in a durable outbox. Notification delivery is asynchronous and cannot roll back or delay the work-item update.
+2. A notification worker resolves the affected assignees, checks organization membership, verified phone number, WhatsApp opt-in, notification preferences, quiet hours, and event relevance, then renders the approved template.
+3. The worker sends through the configured WhatsApp Business Platform sender and stores the provider message ID, tenant, recipient user ID, event ID, template/version, timestamps, attempt count, and delivery state.
+4. A verified HTTPS webhook receives provider status callbacks and updates message state (for example accepted/sent, delivered, read when available, or failed). Verify webhook authenticity, reject invalid payloads, and make processing idempotent.
+5. Retry transient failures with bounded exponential backoff and jitter. Use an idempotency key based on the event, recipient, channel, and notification type to prevent duplicate sends. Route exhausted or permanent failures to a dead-letter queue and expose an operational alert; do not endlessly retry invalid numbers, revoked consent, or rejected templates.
+6. Show useful notification status to the user or team administrator without exposing provider credentials or full message payloads.
+
+The initial hosted release can use one Follow-Up-owned WhatsApp Business Account/sender for product notifications. Keep sender identity and credentials behind a provider adapter and tenant-aware configuration. Later, support organization-owned WhatsApp Business Accounts and sender numbers (for example through Meta Embedded Signup) where customers need messages to originate from their own business identity. Never silently mix senders or use one organization's credentials for another tenant.
+
+**Message content and templates**
+
+- Prepare and submit Meta-approved utility templates for transactional events, such as a new assignment and an important task update. Template category and approval are determined by Meta; do not assume an arbitrary free-form message can be sent.
+- Include only concise context: Follow-Up or the configured business name, organization/workspace name where appropriate, item title, event type, actor, priority/due-date details when relevant, and a secure link back to the item.
+- Business-initiated conversations require an approved template. Free-form replies are permitted only within the 24-hour customer-service window after the user messages the business; outside that window, use an approved template. Keep templates aligned with their approved purpose.
+- Track message pricing, template quality/approval state, throughput limits, provider rate limits, and country-specific requirements. Messaging is an optional paid integration, not a guaranteed free channel.
+
+**Security, privacy, and tenant isolation**
+
+- Store access tokens, app secrets, webhook verification secrets, and sender identifiers in a managed secret store (AWS Secrets Manager/SSM for hosted AWS; a protected secret file or secrets manager for on-premises). Never expose them to the browser or commit them to Git.
+- Scope sender configuration, opt-in records, phone numbers, outbox records, message logs, webhook events, and delivery status to the correct organization. Enforce tenant authorization in the backend.
+- Minimize phone-number and message-content retention. Avoid writing message bodies and full recipient numbers to ordinary logs; use masked identifiers and correlation IDs.
+- Define retention/deletion rules for consent evidence and delivery metadata, and include WhatsApp notification preferences in user export and account deletion workflows.
+- Keep WhatsApp provider outages isolated from item operations and the in-app notification history. Monitor queue depth, send failures, webhook lag, template rejection, provider throttling, and cost.
+
+Meta policy and technical documentation must be rechecked during implementation because requirements, pricing, template classification, and onboarding flows can change. See the [WhatsApp Business Messaging Policy](https://whatsappbusiness.com/policy/) and [Meta's WhatsApp Cloud API collection](https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api).
+
 ## 5. On-premises deployment architecture
 
 The AWS implementation cannot simply be copied to a local server. Cognito, API Gateway, Lambda execution, DynamoDB access patterns, and API Gateway WebSockets are AWS-specific dependencies. A production on-premises version needs portable runtime and service adapters.
@@ -171,6 +214,11 @@ A supported installation should provide:
 - An installation guide, administrator guide, network/port requirements, sizing guidance, and troubleshooting procedures.
 
 Docker Compose is appropriate for a first supported single-server package. It should not be marketed as highly available: production resilience requires redundant compute, database backups/replication, monitoring, and tested recovery. Kubernetes should be optional rather than a prerequisite for smaller customers.
+
+
+### Optional WhatsApp integration
+
+On-premises installations can use the same notification-provider interface, but the customer must configure a supported WhatsApp Business Platform sender and provide its own business account, verified sender, approved templates, and credentials. The installation needs outbound HTTPS connectivity to Meta's API and an inbound HTTPS webhook endpoint reachable by Meta (or a secured relay). If the customer cannot expose a webhook, document a supported relay/connector pattern rather than weakening webhook verification. Keep credentials in the installation's secrets manager, and scope consent, sender configuration, event queues, and delivery records to that installation. WhatsApp delivery remains optional; local task management must continue if internet access or Meta's service is unavailable.
 
 ## 6. Shared code strategy
 
@@ -218,6 +266,13 @@ Do not use LocalStack as the production on-premises runtime. It can be useful in
 
 **Exit criteria:** cross-tenant negative tests pass for every data path; invited users can join; revoked users lose access; data recovery and real-time isolation are verified.
 
+- Add the durable notification outbox and asynchronous worker for assignment and significant-update events.
+- Add WhatsApp opt-in, verified phone numbers, per-user event preferences, quiet hours/timezone, and immediate/batched delivery settings.
+- Integrate the official WhatsApp Business Platform sender, approved utility templates, authenticated status webhooks, idempotent retries, and failure monitoring.
+- Launch messaging with a Follow-Up-owned sender for the private beta; keep the adapter ready for organization-owned senders later.
+
+**Exit criteria:** no messages are sent without recorded opt-in; template/window rules are enforced; duplicate and cross-tenant sends are blocked; delivery/failure callbacks reconcile correctly; provider outages do not interrupt item updates.
+
 ### Phase 3 — Hosted public onboarding
 
 - Enable controlled public organization sign-up after beta acceptance.
@@ -228,6 +283,10 @@ Do not use LocalStack as the production on-premises runtime. It can be useful in
 
 **Exit criteria:** onboarding, support, tenant lifecycle, monitoring, data export/deletion, and commercial operations are ready for external customers.
 
+- Add organization-level notification controls and per-tenant messaging quotas/cost visibility.
+- Provide sender onboarding and verification guidance. Add organization-owned WhatsApp Business Account onboarding only after the shared sender workflow is stable.
+- Include messaging consent, opt-out, delivery records, retention, and deletion in privacy and support workflows.
+
 ### Phase 4 — On-premises compatibility
 
 - Complete the portable Python runtime and PostgreSQL repository adapter.
@@ -237,6 +296,9 @@ Do not use LocalStack as the production on-premises runtime. It can be useful in
 - Publish the single-organization Docker Compose installation, backup/restore, upgrade, and hardening guides.
 
 **Exit criteria:** a clean installation can be deployed from documentation, upgraded to a later release, backed up, restored, and validated without AWS resources.
+
+- Add an optional notification worker and provider adapter, with per-installation WhatsApp Business credentials, approved templates, consent records, and webhook configuration.
+- Document outbound connectivity, public HTTPS webhook or secured relay requirements, secret rotation, provider outages, and message-cost ownership.
 
 ### Phase 5 — Enterprise operations and optional scale-out
 
@@ -276,6 +338,14 @@ A release is not ready for real team data until all relevant checks pass:
 - The on-premises installation can be installed, upgraded, backed up, and restored using the published procedures.
 - Browser-local data is never represented as server-synchronized or securely authenticated.
 
+- WhatsApp is sent only to a verified number with a current, recorded opt-in and matching user preferences.
+- New assignment and configured important-update events notify only the affected current assignees; unrelated users and other tenants receive nothing.
+- Approved template and customer-service-window rules are enforced, and template rejection or provider outages never affect item persistence.
+- Duplicate event delivery, webhook retries, worker restarts, and transient failures do not cause duplicate user messages.
+- Delivered/read/failed statuses are reconciled where the provider supplies them; permanent failures are surfaced without endless retries.
+- A user can opt out and stop future WhatsApp notifications promptly; opt-out is respected across hosted and on-premises installations.
+- Sender credentials, phone numbers, message records, and delivery webhooks remain tenant-scoped and are never exposed to the frontend or ordinary logs.
+
 ## 10. Decisions to make before implementation
 
 | Decision | Recommended starting point |
@@ -290,7 +360,7 @@ A release is not ready for real team data until all relevant checks pass:
 | Legacy data | Explicit export/import; no automatic browser-storage migration. |
 | Billing | Defer until the hosted beta and pricing model are agreed. |
 | Region and residency | Decide from expected customers, applicable requirements, latency, and recovery objectives. |
-
+| WhatsApp notifications | Official WhatsApp Business Platform; Follow-Up-owned sender for the hosted beta, optional organization-owned sender later; explicit per-user opt-in and preferences. |
 ## 11. Implementation boundary
 
 This document is a roadmap, not a claim that the features above are already implemented or deployed. The GitHub Pages application remains browser-local. The AWS repository remains the starting point for the hosted backend, but self-service organization registration and tenant isolation are prerequisite engineering work. On-premises support requires the separate portable runtime and PostgreSQL path described above.
