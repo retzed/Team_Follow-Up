@@ -1,191 +1,124 @@
 # Follow-Up
 
-A bilingual (English/Arabic) team workspace for organizing projects, jobs, tasks, follow-ups, and assignments.
+**Follow-Up** is a bilingual (English/Arabic) team work-management web application for organizing Projects, Jobs, Tasks, and Follow-ups in one hierarchical workspace. It combines assignment management, progress and priority tracking, activity history, archive/restore, responsive layouts, and English/Arabic RTL/LTR support.
 
-**URL: [retzed.github.io/Team_Follow-Up](https://retzed.github.io/Team_Follow-Up/)** · [Project guide](PROJECT_GUIDE.md) · [Application architecture](docs/ARCHITECTURE.md) · [Complete application documentation](docs/DOCUMENTATION.md)
+**Application:** [retzed.github.io/Team_Follow-Up](https://retzed.github.io/Team_Follow-Up/)  
+**Documentation:** [Project guide](PROJECT_GUIDE.md) · [Architecture](docs/ARCHITECTURE.md) · [Complete application reference](docs/DOCUMENTATION.md) · [Deployment roadmap](docs/DEPLOYMENT_ROADMAP.md)  
+**AWS implementation:** [Follow-Up AWS Deployment](https://github.com/retzed/Team_Follow-Up_AWS-Deployment)
 
-> this public build uses browser-local sign-in and browser storage. It has no server-side database or real authentication. Do not enter private, personal, or confidential information. Each browser profile has its own locally stored workspace.
+> **Current hosting boundary:** the GitHub Pages version is a browser-local edition. Its profiles and work records are stored in each visitor's browser; they are not shared between different people, browsers, or devices. Its local sign-in is not production authentication. Do not use this edition for confidential or sensitive team information.
 
-## Try the app
+## Product capabilities
 
-1. Open the [hosted application](https://retzed.github.io/Team_Follow-Up/). If the site has not been published for this repository yet, follow the one-time [GitHub Pages setup](PROJECT_GUIDE.md#7-github-pages-publishing).
-2. Enter one of the built-in team usernames below. English and Arabic aliases are supported; use `root` for the root account.
-3. The six standard team accounts accept any non-empty password until they set one from their account page. The `root` login starts with password `root@1234`; root uses a client-side PBKDF2-HMAC-SHA-256 hash record, and changed passwords are stored as salted PBKDF2-HMAC-SHA-256 hashes in browser local storage. This remains a client-only simulation, not production authentication.
-4. Explore the comprehensive AWS deployment runbook built into the workspace: 16 documentation Projects plus a separate optional SAM/CloudFormation Job, a varied set of 3–5 Tasks per Project, 2–4 Follow-ups per Task, 1–4 direct Project checkpoints, and four Activity events per work item.
+- Organizes Projects and Jobs at the top level, with Tasks and Follow-ups beneath eligible parent items.
+- Tracks assignees, priorities, status, descriptions, due dates where applicable, and item changes.
+- Provides item-level and application-wide activity history.
+- Supports archive, hierarchy-aware restore, search, assignment filters, and overview metrics.
+- Includes bilingual English/Arabic interface text, mixed-language item names, RTL/LTR layouts, and light/dark themes.
+- Adapts to desktop, tablet, and mobile browser sizes.
 
-| teammate | Username (English) | Username (Arabic) | Team label |
-|---|---|---|---|
-| Marwa | `Marwa` | `مروة` | Team Leader |
-| Zyad | `Zyad` | `زياد` | AWS Engineer |
-| Nadine | `Nadine` | `نادين` | AWS Engineer |
-| Omar | `Omar` | `عمر` | AWS Engineer |
-| Haneen | `Haneen` | `حنين` | AWS Engineer |
-| Dina | `Dina` | `دينا` | AWS Engineer |
-| Root | `root` | — | System administrator (root account) |
+## Application and deployment status
 
-The entered username is used only for sign-in; **Display name** is the name shown throughout the app. The account page opens on **Assigned Items** and also provides **Profile**, **Pinned Items**, and **Search** tabs. Profile fields are ordered as Display name, Arabic display name, phone, e-mail, Label, Label (Arabic), and Profile icon; the privilege indicator remains beside the display name at the top, not as an editable profile textbox. Theme and language apply immediately; **Save changes** saves profile fields only. Search filters Projects/Jobs by type, status, creator/updater/owner/assignee user, and inclusive date ranges, with explicit **Open in workspace** and **Activity history** buttons. Assigned/Pinned results also have workspace and history actions. The workspace keeps its own Search sidebar and floating expand/collapse toggle; selection is retained when the sidebar is expanded. At tablet/mobile widths the Search controls use a two-column layout, date controls stay within their columns, and action buttons may wrap. Do not enter confidential or sensitive information in the browser-local version.
+Follow-Up currently has two distinct implementation tracks:
 
-### Where does the data go?
+| Track | Current role | Data and identity model |
+|---|---|---|
+| GitHub Pages application in this repository | Public static browser application | Browser-local profiles and data. No shared server database or secure server-side sign-in. |
+| AWS implementation in the separate repository | Starting point for a shared hosted service | Cognito authentication, API Gateway, Python Lambda, DynamoDB, and WebSocket change-delivery components with deployment documentation. |
 
-- Work items, assignments, archive entries, and activity events are saved in the browser's `localStorage` for this site.
-- The active identity is stored once in browser `localStorage`, shared by all tabs in the same browser profile for this site. It survives page refreshes, tab closure, and browser restarts until the site's stored website data is cleared. Signing in or out in one tab updates other open tabs automatically. Separate browser profiles and private sessions keep separate identities.
-- The current page, selected items, filters, expanded rows, and scroll position are saved separately in each tab's `sessionStorage`. Refreshing a tab restores that tab's own view; another tab can remain on a different page with different filters. A newly opened tab starts with its own default view.
-- Open tabs/windows using the same browser profile and same site origin receive compact same-origin change signals, so an assignment or item edit in one tab refreshes the affected Assigned Items/workspace views in the other tabs. The application uses `BroadcastChannel` with a `localStorage` storage-event fallback; it does not send local data or notifications over the internet.
-- Another browser profile, private window, browser, or device has a separate local workspace and does not receive these change signals. For cross-device, multi-user real-time delivery, use the separate AWS deployment, which uses authenticated WebSockets and a durable change cursor.
-- The built-in workspace is intentionally large: **a few hundred work items and four Activity events per item**. It organizes the AWS project step by step across architecture, account/cost setup, Cognito, all four DynamoDB tables and five GSIs, IAM/Lambda, API Gateway, Amplify, frontend integration, lazy loading, archive/restore, CloudWatch, acceptance testing, recovery, and an isolated optional SAM/CloudFormation path.
-- Workspace records remain in browser storage and are not uploaded or synchronized to the AWS deployment account. Existing browser profiles are migrated to the current storage namespace when the application opens, preserving previously saved work.
+The AWS implementation is not yet an open-registration, multi-tenant service. Organization creation, invitations, tenant-scoped data isolation, and self-service team onboarding are defined in the [deployment roadmap](docs/DEPLOYMENT_ROADMAP.md). The AWS repository's implementation record documents its last verified account snapshot; check it before assuming that any cloud resources are currently deployed.
 
-## What the application does
+The roadmap also defines an on-premises delivery model. That requires a portable backend runtime, PostgreSQL persistence, an OIDC identity provider, and supported installation/upgrade/backup procedures; it is not achieved by hosting the current static files on an internal server.
 
-- Organizes work into **Projects** and **Jobs** at the top level.
-- Supports **Tasks** and **Follow-ups** beneath eligible parent items.
-- Tracks assignees, priorities, descriptions, and changes across work items. Projects, Jobs, and Tasks also support status and optional due dates; Follow-ups do not have either field.
-- Provides item-specific and application-wide activity history.
-- Includes archive, hierarchy-aware restore, search, assignment filters, and overview counts.
-- Supports English and Arabic interface languages, including mixed-language item names.
-- Includes responsive desktop/mobile layouts and light/dark themes.
+## Try the hosted application
 
-## Application architecture
+Open the [Follow-Up application](https://retzed.github.io/Team_Follow-Up/). The browser-local edition includes preconfigured workspace profiles and a populated workspace so that its workflows and layouts can be explored.
 
-The hosted application is a static browser client. Its data layer is an in-browser adapter that provides a consistent asynchronous interface over local browser storage.
-
-```mermaid
-flowchart TD
-    Visitor[Team member] --> Auth[local sign-in screen]
-    Auth --> Session[Tab session state]
-    Auth --> UI[Application UI]
-    UI --> Views[Projects, jobs, tasks and follow-ups]
-    UI --> Search[Search and assignment filters]
-    UI --> History[Activity history and archive]
-    Views --> DataAPI[Follow-Up data access layer]
-    Search --> DataAPI
-    History --> DataAPI
-    DataAPI --> Store[Browser-local data store]
-    Store --> Items[Work items and hierarchy]
-    Store --> Events[Activity events]
-    Store --> Archive[Archived items]
-    Store --> Profiles[Built-in team profiles]
-```
-
-This repository deliberately focuses on the application rather than cloud-specific deployment infrastructure. No separate server process is required for the public browser-local application. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the component/data flow and the boundary intended for a future interchangeable backend.
-
-## Loading, modal actions, and responsiveness
-
-The interface uses revisioned in-memory indexes for item lookup, parent/child relationships, and Activity lookup. This keeps repeated rendering and sorting from rebuilding or scanning unrelated records unnecessarily.
-
-- Opening **New Project/Job**, **New Child Item**, or **Edit** builds the dialog from the relevant item and its direct relationships. The New Project/Job form does not walk an unrelated hierarchy just to populate its type selector.
-- The shared `allDescendants()` helper used by subtree validation/deletion is iterative and cycle-safe, so those operations do not depend on recursive call-stack depth. Other hierarchy renderers must keep their own visited-ID guards.
-- Modal actions are handled by the modal event handler only; modal clicks are stopped before they can bubble into the workspace's delegated-action handler and dispatch a second action.
-- Child item ordering uses the selected date mode and pre-indexed per-item Activity events; it does not repeatedly scan the entire Project/Job Activity timeline for every sort comparison.
-- Loading remains local in the local adapter. The above indexing and click-handling safeguards are shared frontend behavior, not a separate backend or deployment requirement.
-
-The regression suite includes checks for modal click propagation, deep/cyclic hierarchy traversal, date sorting, Activity merge integrity, and UI structure. Run `npm test` and `npm run build` before publishing a frontend change.
-
-The **Projects & Jobs** workspace Search sidebar starts collapsed. Its floating toggle updates sidebar visibility directly, cancels the queued top-level search timer, and invalidates in-flight search results before hiding the panel. Reopening continues to use the existing cached list and root-child loading flow; viewport changes preserve the selected collapsed/expanded state. Regression tests cover the toggle state and stale-response protection. The collapsed layout uses one flexible grid column after hiding the sidebar, so the main workspace cannot be placed in a zero-width track.
-
-## System requirements
-
-**To use the application:** a current desktop or mobile browser with JavaScript enabled and browser storage available. No GPU, database server, cloud account, or special hardware is required. The application is delivered as a static browser client; persistent workspace data requires browser storage.
-
-**For development:** Git to clone the repository, Node.js 24 or newer for the test/build scripts, and Python 3 if you want to use Python's built-in local HTTP server. A typical modern laptop or desktop is sufficient; 2 CPU cores, 4 GB RAM, and roughly 500 MB of free disk space are practical recommendations, not strict application limits. No third-party npm packages are currently required.
-
-## Installation
-
-Clone the repository and change into its root directory:
-
-```bash
-git clone https://github.com/retzed/Team_Follow-Up.git
-cd Team_Follow-Up
-```
-
-No dependency installation is needed for the public browser-local application. The application uses browser-native APIs, and the test/build scripts do not require third-party npm packages. Install Node.js 24 or newer only if you plan to run the validation/build commands.
+The active identity and workspace records are saved in browser localStorage. The current page, selected item, filters, expanded rows, and scroll position are saved separately for each tab in sessionStorage. Open tabs in the same browser profile can receive local change notifications, but those notifications do not travel over the internet. A different browser profile or device has separate data.
 
 ## Run locally
 
-You only need a modern browser to open `index.html`. For a more representative local setup, serve the project over HTTP:
+Clone the repository:
+
+~~~bash
+git clone https://github.com/retzed/Team_Follow-Up.git
+cd Team_Follow-Up
+~~~
+
+Open index.html in a modern browser, or serve the repository over HTTP.
 
 **Python**
 
-```bash
+~~~bash
 python -m http.server 8000
-```
+~~~
 
-Then open [http://localhost:8000](http://localhost:8000).
+Open [http://localhost:8000](http://localhost:8000).
 
-**Node.js development checks** (Node.js 24 or newer recommended)
+No third-party npm packages are required for the current frontend build or regression suite. Node.js 24 or newer is recommended for validation and building.
 
-```bash
+~~~bash
 npm test
 npm run build
-```
+~~~
 
-The static build is written to `dist/index.html`. No third-party package install is currently required for the application tests or build.
+The static build is generated in dist/. To preview the built artifact:
 
-## Configuration
-
-The public build is intentionally zero-configuration. It does not need a `.env` file, AWS account, Cognito configuration, API URL, backend server, or database setup. `scripts/build.mjs` replaces the runtime-configuration block with browser-local settings and explicitly clears AWS user-pool, client, and API values. Do not add production credentials or private data to the public repository.
-
-To rebuild the static artifact after changing the source:
-
-```bash
-npm run build
-```
-
-The generated `dist/index.html` is the browser-loadable deployment artifact. Preview that artifact locally with:
-
-```bash
+~~~bash
 python -m http.server 8000 --directory dist
-```
+~~~
 
-Then open [http://localhost:8000](http://localhost:8000).
+## Application architecture
 
-## API documentation
+The GitHub Pages edition is a static browser client. The UI uses an asynchronous data-access interface whose current public build is configured to use the in-browser adapter.
 
-The hosted application has **no HTTP/REST API** and makes no requests to a remote database. `TeamFollowUpDataApi` is an internal asynchronous JavaScript interface implemented in the browser; its built-in adapter persists the browser-local workspace in `localStorage`. Its method names are not externally callable HTTP endpoints.
+~~~mermaid
+flowchart TD
+    Member[Visitor] --> Pages[GitHub Pages]
+    Pages --> Browser[Browser application]
+    Browser --> LocalAuth[Browser-local sign-in]
+    LocalAuth --> UI[Follow-Up interface]
+    UI --> API[TeamFollowUpDataApi]
+    API --> Store[Browser localStorage]
+    Store --> Items[Work items and hierarchy]
+    Store --> Activity[Activity events]
+    Store --> Archive[Archived items]
+    Store --> Profiles[Local profiles]
+    Browser --> View[Per-tab view state]
+    View --> TabStore[sessionStorage]
+~~~
 
-For the separate Cognito/API Gateway/Lambda/DynamoDB implementation, see the [AWS deployment repository](https://github.com/retzed/Team_Follow-Up_AWS-Deployment), which documents that API contract.
+This repository contains the public frontend, bundled typography, build scripts, regression checks, and product documentation. The AWS-specific backend and infrastructure documentation are maintained separately.
 
-## Executable artifact and deployed application
+## Repository structure
 
-This is a browser-based web application, so a native `.exe`, `.jar`, or `.apk` package is not applicable. The deployable web artifact is `dist/index.html` plus `.nojekyll`; the GitHub Actions workflow builds it and publishes it to GitHub Pages.
-
-- **Open the hosted application:** [https://retzed.github.io/Team_Follow-Up/](https://retzed.github.io/Team_Follow-Up/)
-- **Review deployment status/build:** [GitHub Actions — Build and deploy Follow-Up](https://github.com/retzed/Team_Follow-Up/actions/workflows/pages.yml)
-
-The hosted URL serves the browser-local application, not the AWS-backed shared-data application. Local account selection is not secure authentication, and work is not synchronized between different browsers or devices.
-
-## Project structure
-
-```text
+~~~text
 .
-├── index.html                 # Complete responsive UI and built-in local adapter
-├── package.json               # Local build and regression-test commands
-├── PROJECT_GUIDE.md           # Step-by-step user and developer guide
-├── RELEASE_NOTES.md           # Application-focused release notes
+├── index.html
+├── package.json
+├── PROJECT_GUIDE.md
+├── RELEASE_NOTES.md
 ├── docs/
-│   ├── ARCHITECTURE.md        # UI, data model, and browser storage architecture
-│   └── DOCUMENTATION.md       # Full product, developer, security, and testing reference
+│   ├── ARCHITECTURE.md
+│   ├── DOCUMENTATION.md
+│   └── DEPLOYMENT_ROADMAP.md
+├── assets/
+│   └── fonts/
 ├── scripts/
-│   ├── build.mjs              # Create the static application artifact
-│   ├── check-syntax.mjs       # Parse inline JavaScript
-│   └── test-*.mjs             # Regression tests for data/UI behavior
 └── .github/
     └── workflows/
-        └── pages.yml          # Build and publish Follow-Up with GitHub Pages
-```
+        └── pages.yml
+~~~
 
-## Development and contributions
+## Build and publishing
 
-- Read [PROJECT_GUIDE.md](PROJECT_GUIDE.md) before making changes.
-- Keep the public browser-local application functional without a server, external database, or cloud account.
-- Add a regression test for behavior changes where practical. Run `npm test` before pushing.
-- Work on feature branches and use pull requests to review larger changes.
-- Keep secrets, personal information, credentials, generated output, and local environment files out of source control.
+The GitHub Actions workflow in .github/workflows/pages.yml runs the regression suite, builds the static application, and publishes the dist/ artifact to GitHub Pages when changes reach main. Pull requests run validation without publishing.
 
-Changes pushed to `main` run the test suite and publish the application through GitHub Pages. The deployment workflow is in [`.github/workflows/pages.yml`](.github/workflows/pages.yml).
+- [Workflow runs](https://github.com/retzed/Team_Follow-Up/actions)
+- [GitHub Pages application](https://retzed.github.io/Team_Follow-Up/)
 
-## Current scope and future work
+## Security and data handling
 
-**Included now:** the browser application, browser-local sign-in, starter workspace records, client-side persistence, UI/data regression tests, project documentation, and automated static-site publishing.
+The current GitHub Pages edition stores its local workspace in the visitor's browser. Client-side sign-in, browser storage, and cross-tab notifications do not provide secure authentication, server-side authorization, shared persistence, backup, or cross-device synchronization. Do not store credentials, customer information, employee-sensitive notes, or confidential work in this edition.
 
-**Not included in the public browser-local build:** shared multi-user persistence, real account authentication, a server-side API, or a production database. A future backend can be introduced behind the data access interface without tying the product to any particular cloud provider.
+The hosted multi-tenant and on-premises delivery requirements—including identity, tenant isolation, authorization, data migration, backups, and operational controls—are documented in the [deployment roadmap](docs/DEPLOYMENT_ROADMAP.md).
